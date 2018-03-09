@@ -15,4 +15,6 @@
 
 .idea
 
-src/examples
+/pkg/
+/src/github.com/
+!/src/github.com/paveltrufi/

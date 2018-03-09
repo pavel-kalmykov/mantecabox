@@ -1,15 +1,16 @@
-package main
+package database
 
 import (
+	"database/sql"
 	"fmt"
 	_ "github.com/lib/pq"
-	"testing"
-	"database/sql"
-	"time"
 	"github.com/stretchr/testify/assert"
-	"os/exec"
+	"github.com/stretchr/testify/require"
 	"log"
+	"os/exec"
 	"strings"
+	"testing"
+	"time"
 )
 
 const (
@@ -29,7 +30,7 @@ type UserInfo = struct {
 // startDockerPostgresDb ejecuta un comando para comprobar si el contenedor de la base de datos está en ejecución o no.
 // Este comando devolverá "true\n" o "false\n", así que comprobamos que si no devuelve true lo iniciemos (esto lo
 // sabremos si al ejecutarse el comando éste ha devuelto el nombre del mismo seguido de un salto de línea).
-func startDockerPostgresDb() {
+func StartDockerPostgresDb() {
 	command := exec.Command("docker", "inspect", "-f", "{{.State.Running}}", dockerContainerName)
 	output, err := command.Output()
 	checkErr(err)
@@ -39,6 +40,7 @@ func startDockerPostgresDb() {
 		checkErr(err)
 		if strings.HasPrefix(string(output), dockerContainerName) {
 			log.Printf("Docker container '%s' started\n", dockerContainerName)
+			time.Sleep(time.Second)
 		} else {
 			panic("Unable to start Postgre's docker container!")
 		}
@@ -47,32 +49,33 @@ func startDockerPostgresDb() {
 	}
 }
 
+// TestDatabaseConnection es un test que prueba la conexión con la base de datos de Docker para comprobar su
+// correcto funcionamiento
 func TestDatabaseConnection(t *testing.T) {
-	startDockerPostgresDb()
-	databaseInfo := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable",
-		DBUSER, DBPASSWORD, DBNAME)
+	StartDockerPostgresDb()
+	databaseInfo := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=require", DBUSER, DBPASSWORD, DBNAME)
 	db, err := sql.Open("postgres", databaseInfo)
-	checkErr(err)
+	require.NoError(t, err)
 	defer db.Close()
 
 	// Inserting values
 	var lastInsertId int
 	err = db.QueryRow("INSERT INTO userinfo(username,departname,created) VALUES($1,$2,$3) RETURNING uid;", "astaxie", "研发部门", "2018-03-07").Scan(&lastInsertId)
-	checkErr(err)
+	require.NoError(t, err)
 	assert.NotNil(t, lastInsertId)
 
 	// Updating values
 	stmt, err := db.Prepare("UPDATE userinfo SET username=$1 WHERE uid=$2")
-	checkErr(err)
+	require.NoError(t, err)
 	res, err := stmt.Exec("astaxieupdate", lastInsertId)
-	checkErr(err)
+	require.NoError(t, err)
 	affect, err := res.RowsAffected()
-	checkErr(err)
+	require.NoError(t, err)
 	assert.EqualValues(t, 1, affect)
 
 	// Querying
 	rows, err := db.Query("SELECT * FROM userinfo")
-	checkErr(err)
+	require.NoError(t, err)
 	for rows.Next() {
 		var userInfo UserInfo
 		err = rows.Scan(&userInfo.uid, &userInfo.username, &userInfo.department, &userInfo.created)
@@ -85,11 +88,11 @@ func TestDatabaseConnection(t *testing.T) {
 
 	// Deleting
 	stmt, err = db.Prepare("DELETE FROM userinfo WHERE uid=$1")
-	checkErr(err)
+	require.NoError(t, err)
 	res, err = stmt.Exec(lastInsertId)
-	checkErr(err)
+	require.NoError(t, err)
 	affect, err = res.RowsAffected()
-	checkErr(err)
+	require.NoError(t, err)
 	assert.EqualValues(t, 1, affect)
 }
 
