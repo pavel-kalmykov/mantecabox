@@ -8,9 +8,14 @@ import (
 	"testing"
 )
 
-func TestGetConfiguration(t *testing.T) {
-	// Global Test preparation
+func TestMain(m *testing.M) {
 	os.Setenv("MANTECABOX_CONFIG_FILE", "configuration.test.json")
+	code := m.Run()
+	os.Remove("configuration.test.json")
+	os.Exit(code)
+}
+
+func TestGetConfiguration(t *testing.T) {
 	testCases := []struct {
 		name    string
 		config  string
@@ -71,6 +76,7 @@ func TestGetConfiguration(t *testing.T) {
 
 	for _, tt := range testCases {
 		// Test preparation
+		os.Remove("configuration.test.json")
 		if tt.config != "" {
 			ioutil.WriteFile("configuration.test.json", []byte(tt.config), os.ModePerm)
 		}
@@ -83,8 +89,5 @@ func TestGetConfiguration(t *testing.T) {
 			}
 			require.Equal(t, tt.want, got)
 		})
-
-		// Test cleanup
-		os.Remove("configuration.test.json")
 	}
 }
