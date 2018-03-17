@@ -1,12 +1,11 @@
 package database
 
 import (
-	"database/sql"
-	"fmt"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"log"
+	"os"
 	"os/exec"
 	"strings"
 	"testing"
@@ -14,9 +13,6 @@ import (
 )
 
 const (
-	DBUSER              = "sds"
-	DBPASSWORD          = "sds"
-	DBNAME              = "sds"
 	dockerContainerName = "sds-postgres"
 )
 
@@ -52,9 +48,9 @@ func StartDockerPostgresDb() {
 // TestDatabaseConnection es un test que prueba la conexión con la base de datos de Docker para comprobar su
 // correcto funcionamiento
 func TestDatabaseConnection(t *testing.T) {
+	os.Setenv("MANTECABOX_CONFIG_FILE", "configuration.test.json")
 	StartDockerPostgresDb()
-	databaseInfo := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=require", DBUSER, DBPASSWORD, DBNAME)
-	db, err := sql.Open("postgres", databaseInfo)
+	db, err := GetDbReadingConfig()
 	require.NoError(t, err)
 	defer db.Close()
 
