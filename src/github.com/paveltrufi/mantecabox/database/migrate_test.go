@@ -5,6 +5,7 @@ import (
 	"github.com/golang-migrate/migrate/database/postgres"
 	"github.com/golang-migrate/migrate/source/file"
 	_ "github.com/lib/pq"
+	"github.com/paveltrufi/mantecabox/utilities"
 	"github.com/stretchr/testify/require"
 	"log"
 	"os"
@@ -13,7 +14,7 @@ import (
 
 func TestMigrate(t *testing.T) {
 	os.Setenv("MANTECABOX_CONFIG_FILE", "configuration.test.json")
-	StartDockerPostgresDb()
+	utilities.StartDockerPostgresDb()
 	db, err := GetDbReadingConfig()
 	require.NoError(t, err)
 	defer db.Close()

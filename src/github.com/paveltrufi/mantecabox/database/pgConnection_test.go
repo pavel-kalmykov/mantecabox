@@ -2,18 +2,12 @@ package database
 
 import (
 	_ "github.com/lib/pq"
+	"github.com/paveltrufi/mantecabox/utilities"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"log"
 	"os"
-	"os/exec"
-	"strings"
 	"testing"
 	"time"
-)
-
-const (
-	dockerContainerName = "sds-postgres"
 )
 
 type UserInfo = struct {
@@ -23,33 +17,11 @@ type UserInfo = struct {
 	created    time.Time
 }
 
-// startDockerPostgresDb ejecuta un comando para comprobar si el contenedor de la base de datos está en ejecución o no.
-// Este comando devolverá "true\n" o "false\n", así que comprobamos que si no devuelve true lo iniciemos (esto lo
-// sabremos si al ejecutarse el comando éste ha devuelto el nombre del mismo seguido de un salto de línea).
-func StartDockerPostgresDb() {
-	command := exec.Command("docker", "inspect", "-f", "{{.State.Running}}", dockerContainerName)
-	output, err := command.Output()
-	checkErr(err)
-	// usamos hasPrefix para no tener que controlar los saltos de línea
-	if !(strings.HasPrefix(string(output), "true")) {
-		output, err := exec.Command("docker", "container", "start", dockerContainerName).Output()
-		checkErr(err)
-		if strings.HasPrefix(string(output), dockerContainerName) {
-			log.Printf("Docker container '%s' started\n", dockerContainerName)
-			time.Sleep(time.Second)
-		} else {
-			panic("Unable to start Postgre's docker container!")
-		}
-	} else {
-		log.Printf("Docker container '%s' already running\n", dockerContainerName)
-	}
-}
-
 // TestDatabaseConnection es un test que prueba la conexión con la base de datos de Docker para comprobar su
 // correcto funcionamiento
 func TestDatabaseConnection(t *testing.T) {
 	os.Setenv("MANTECABOX_CONFIG_FILE", "configuration.test.json")
-	StartDockerPostgresDb()
+	utilities.StartDockerPostgresDb()
 	db, err := GetDbReadingConfig()
 	require.NoError(t, err)
 	defer db.Close()
@@ -90,10 +62,4 @@ func TestDatabaseConnection(t *testing.T) {
 	affect, err = res.RowsAffected()
 	require.NoError(t, err)
 	assert.EqualValues(t, 1, affect)
-}
-
-func checkErr(e error) {
-	if e != nil {
-		panic(e)
-	}
 }
