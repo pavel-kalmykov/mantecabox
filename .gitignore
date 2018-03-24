@@ -15,6 +15,5 @@
 
 .idea
 
-/pkg/
-/src/github.com/
-!/src/github.com/paveltrufi/
+pkg
+bin

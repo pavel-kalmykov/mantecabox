@@ -1,19 +1,21 @@
 package database
 
 import (
-	"database/sql"
 	"github.com/golang-migrate/migrate"
 	"github.com/golang-migrate/migrate/database/postgres"
 	"github.com/golang-migrate/migrate/source/file"
 	_ "github.com/lib/pq"
+	"github.com/paveltrufi/mantecabox/utilities"
 	"github.com/stretchr/testify/require"
 	"log"
+	"os"
 	"testing"
 )
 
 func TestMigrate(t *testing.T) {
-	StartDockerPostgresDb()
-	db, err := sql.Open("postgres", "postgres://sds:sds@localhost:5432/sds?sslmode=require")
+	os.Setenv("MANTECABOX_CONFIG_FILE", "configuration.test.json")
+	utilities.StartDockerPostgresDb()
+	db, err := GetDbReadingConfig()
 	require.NoError(t, err)
 	defer db.Close()
 
@@ -24,14 +26,14 @@ func TestMigrate(t *testing.T) {
 	fsrc, err := (&file.File{}).Open("file://migrations")
 	require.NoError(t, err)
 
-	m, err := migrate.NewWithInstance("file", fsrc, "sds", instance)
+	m, err := migrate.NewWithInstance("file", fsrc, "postgres", instance)
 	require.NoError(t, err)
 
 	// Migrate all the way up ...
 	err = m.Up()
 	if err == migrate.ErrNoChange {
 		log.Println("No migrations were made")
-	} else {
+	} else if err != nil {
 		log.Println("Some error ocurred: ", err)
 	}
 	version, dirty, err := m.Version()
