@@ -16,7 +16,7 @@ func (dao UserPgDao) GetAll() ([]models.User, error) {
 
 	rows, err := db.Query("SELECT * FROM users WHERE deleted_at IS NULL")
 	if err != nil {
-		log.Info("Unable to execute UserDao.GetAll() query. Reason:", err)
+		log.Info("Unable to execute UserPgDao.GetAll() query. Reason:", err)
 		return nil, err
 	}
 
@@ -24,7 +24,7 @@ func (dao UserPgDao) GetAll() ([]models.User, error) {
 		var user models.User
 		err := rows.Scan(&user.CreatedAt, &user.UpdatedAt, &user.DeletedAt, &user.Username, &user.Password)
 		if err != nil {
-			log.Info("Unable to execute UserDao.GetAll() query. Reason:", err)
+			log.Info("Unable to execute UserPgDao.GetAll() query. Reason:", err)
 			return nil, err
 		}
 		users = append(users, user)
@@ -43,7 +43,7 @@ func (dao UserPgDao) GetByPk(username string) (models.User, error) {
 		&user.CreatedAt, &user.UpdatedAt, &user.DeletedAt, &user.Username, &user.Password)
 
 	if err != nil {
-		log.Debug("Unable to execute UserDao.GetByPk(username string) query. Reason:", err)
+		log.Debug("Unable to execute UserPgDao.GetByPk(username string) query. Reason:", err)
 	} else {
 		log.Debug("Retrieved user", user)
 	}
@@ -61,7 +61,7 @@ func (dao UserPgDao) Create(user *models.User) (models.User, error) {
 		&createdUser.Password)
 
 	if err != nil {
-		log.Info("Unable to execute UserDao.Create(user models.User) query. Reason:", err)
+		log.Info("Unable to execute UserPgDao.Create(user models.User) query. Reason:", err)
 	} else {
 		log.Debug("Created user", createdUser)
 	}
@@ -79,7 +79,7 @@ func (dao UserPgDao) Update(username string, user *models.User) (models.User, er
 		&updatedUser.Password)
 
 	if err != nil {
-		log.Info("Unable to execute UserDao.Update(username string, user models.User) query. Reason:", err)
+		log.Info("Unable to execute UserPgDao.Update(username string, user models.User) query. Reason:", err)
 	} else {
 		log.Debug("Updated user", updatedUser)
 	}
@@ -92,7 +92,7 @@ func (dao UserPgDao) Delete(username string) error {
 
 	result, err := db.Exec("DELETE FROM users WHERE username = $1", username)
 	if err != nil {
-		log.Info("Unable to execute UserDao.Delete(username string) query. Reason:", err)
+		log.Info("Unable to execute UserPgDao.Delete(username string) query. Reason:", err)
 	} else {
 		var rowsAffected int64
 		rowsAffected, err = result.RowsAffected()

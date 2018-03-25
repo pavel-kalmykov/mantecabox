@@ -11,6 +11,8 @@ import (
 	"testing"
 )
 
+const testUserInsert = `INSERT INTO users (username, password) VALUES ('testuser1', 'testpassword1');`
+
 func TestMain(m *testing.M) {
 	utilities.StartDockerPostgresDb()
 	os.Setenv("MANTECABOX_CONFIG_FILE", "configuration.test.json")
@@ -18,7 +20,7 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 
 	db := get()
-	db.Exec("DELETE FROM users")
+	cleanDb(db)
 	os.Exit(code)
 }
 
@@ -93,7 +95,7 @@ func TestUserPgDao_GetByPk(t *testing.T) {
 	}{
 		{
 			"When you ask for an existent user, retrieve it",
-			`INSERT INTO users (username, password) VALUES ('testuser1', 'testpassword1');`,
+			testUserInsert,
 			args{username: "testuser1"},
 			models.User{Username: "testuser1", Password: "testpassword1"},
 			false,
@@ -157,7 +159,7 @@ func TestUserPgDao_Create(t *testing.T) {
 		},
 		{
 			"When you create an already inserted user, return an empty user and an error",
-			`INSERT INTO users (username, password) VALUES ('testuser1', 'testpassword1');`,
+			testUserInsert,
 			args{user: &user},
 			models.User{},
 			true,
@@ -206,35 +208,35 @@ func TestUserPgDao_Update(t *testing.T) {
 	}{
 		{
 			"When you update an already inserted user, return the user updated",
-			`INSERT INTO users (username, password) VALUES ('testuser1', 'testpassword1');`,
+			testUserInsert,
 			args{username: "testuser1", user: &user},
 			user,
 			false,
 		},
 		{
 			"When you update a non-existent user, return an empty user and an error",
-			`INSERT INTO users (username, password) VALUES ('testuser1', 'testpassword1');`,
+			testUserInsert,
 			args{username: "testuser2", user: &user},
 			models.User{},
 			true,
 		},
 		{
 			"When you update a user with an empty username query, return an empty user and an error",
-			`INSERT INTO users (username, password) VALUES ('testuser1', 'testpassword1');`,
+			testUserInsert,
 			args{username: "", user: &user},
 			models.User{},
 			true,
 		},
 		{
 			"When you update an inserted user without username, return an empty user and an error",
-			`INSERT INTO users (username, password) VALUES ('testuser1', 'testpassword1');`,
+			testUserInsert,
 			args{username: "testuser1", user: &models.User{Password: "testpassword2"}},
 			models.User{},
 			true,
 		},
 		{
 			"When you update an inserted user without password, return an empty user and an error",
-			`INSERT INTO users (username, password) VALUES ('testuser1', 'testpassword1');`,
+			testUserInsert,
 			args{username: "testuser1", user: &models.User{Username: "testuser2"}},
 			models.User{},
 			true,
@@ -266,20 +268,20 @@ func TestUserPgDao_Delete(t *testing.T) {
 		wantErr     bool
 	}{
 		{
-			"When you delete an already inserted user, return no error",
-			`INSERT INTO users (username, password) VALUES ('testuser1', 'testpassword1');`,
+			"When you delete an inserted user, return no error",
+			testUserInsert,
 			args{username: "testuser1"},
 			false,
 		},
 		{
 			"When you delete a non-existent user, return an error",
-			`INSERT INTO users (username, password) VALUES ('testuser1', 'testpassword1');`,
+			testUserInsert,
 			args{username: "testuser2"},
 			true,
 		},
 		{
 			"When you update a user with an empty username query, return an error",
-			`INSERT INTO users (username, password) VALUES ('testuser1', 'testpassword1');`,
+			testUserInsert,
 			args{username: ""},
 			true,
 		},
@@ -311,12 +313,18 @@ func getDb(t *testing.T) *sql.DB {
 }
 
 func cleanAndPopulateDb(db *sql.DB, insertQuery string, t *testing.T) {
-	db.Exec("DELETE FROM users")
+	cleanDb(db)
 	if insertQuery != "" {
 		_, err := db.Exec(insertQuery)
 		require.NoError(t, err)
 	}
 }
+
+func cleanDb(db *sql.DB) {
+	db.Exec("DELETE FROM users")
+	db.Exec("DELETE FROM files")
+}
+
 func requireUserEqualCheckingErrors(t *testing.T, wantErr bool, err error, expected models.User, actual models.User) {
 	if wantErr {
 		require.Error(t, err)
