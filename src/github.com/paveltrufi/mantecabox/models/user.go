@@ -5,4 +5,5 @@ type User struct {
 	SoftDelete
 	Username string `json:"username"`
 	Password string `json:"password"`
+	Files    []File `json:"files"`
 }
