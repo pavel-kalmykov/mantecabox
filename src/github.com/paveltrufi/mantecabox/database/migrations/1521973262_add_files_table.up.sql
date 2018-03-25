@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS files (
   updated_at        TIMESTAMP   NOT NULL DEFAULT NOW(),
   deleted_at        TIMESTAMP,
   name              VARCHAR     NOT NULL,
-  owner             VARCHAR(20) NOT NULL CONSTRAINT files_owner_fk REFERENCES users,
+  owner             VARCHAR(20) NOT NULL CONSTRAINT files_owner_fk REFERENCES users ON DELETE CASCADE,
   "group"           VARCHAR     NOT NULL,
   user_readable     BIT         NOT NULL,
   user_writable     BIT         NOT NULL,
