@@ -5,17 +5,17 @@ CREATE TABLE IF NOT EXISTS files (
   deleted_at        TIMESTAMP,
   name              VARCHAR     NOT NULL,
   owner             VARCHAR(20) NOT NULL CONSTRAINT files_owner_fk REFERENCES users ON DELETE CASCADE,
-  "group"           VARCHAR     NOT NULL,
-  user_readable     BIT         NOT NULL,
-  user_writable     BIT         NOT NULL,
-  user_executable   BIT         NOT NULL,
-  group_readable    BIT         NOT NULL,
-  group_writable    BIT         NOT NULL,
-  group_executable  BIT         NOT NULL,
-  other_readable    BIT         NOT NULL,
-  other_writable    BIT         NOT NULL,
-  other_executable  BIT         NOT NULL,
-  platform_creation VARCHAR     NOT NULL
+  "group"           VARCHAR,
+  user_readable     BOOLEAN     NOT NULL DEFAULT TRUE,
+  user_writable     BOOLEAN     NOT NULL DEFAULT TRUE,
+  user_executable   BOOLEAN     NOT NULL DEFAULT FALSE,
+  group_readable    BOOLEAN     NOT NULL DEFAULT TRUE,
+  group_writable    BOOLEAN     NOT NULL DEFAULT FALSE,
+  group_executable  BOOLEAN     NOT NULL DEFAULT FALSE,
+  other_readable    BOOLEAN     NOT NULL DEFAULT FALSE,
+  other_writable    BOOLEAN     NOT NULL DEFAULT FALSE,
+  other_executable  BOOLEAN     NOT NULL DEFAULT FALSE,
+  platform_creation VARCHAR
 );
 
 /*cambiamos el nombre del trigger de usuarios para evitar confusión*/
