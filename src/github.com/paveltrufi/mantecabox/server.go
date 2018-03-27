@@ -78,7 +78,7 @@ func server() {
 	signal.Notify(stopChan, os.Interrupt)
 
 	mux := http.NewServeMux()
-	mux.Handle("/login/", http.HandlerFunc(login))
+	mux.Handle("/login", http.HandlerFunc(login))
 
 	srv := &http.Server{Addr: ":10443", Handler: mux}
 
