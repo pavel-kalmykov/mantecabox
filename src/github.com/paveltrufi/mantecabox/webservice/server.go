@@ -13,9 +13,9 @@ import (
 	"path/filepath"
 
 	"github.com/paveltrufi/mantecabox/models"
+	"github.com/paveltrufi/mantecabox/utilities"
 	"strings"
 	"bytes"
-	"net"
 )
 
 type Resp struct {
@@ -91,33 +91,22 @@ func login(w http.ResponseWriter, req *http.Request) {
 		response(w, false, "Method Not Allowed")
 	}
 }
-func getIPAddress() string {
-	conn, err := net.Dial("udp", "8.8.8.8:80")
-
-	if err != nil {
-		fmt.Print(err)
-	}
-
-	defer conn.Close()
-	localAddr := conn.LocalAddr().String()
-	idx := strings.LastIndex(localAddr, ":")
-	return localAddr[0:idx]
-}
 
 func server() {
 	stopChan := make(chan os.Signal)
 	signal.Notify(stopChan, os.Interrupt)
-	port := "10443"
+
+	config := utilities.GetServerConfiguration()
 
 	mux := http.NewServeMux()
 	mux.Handle("/login", http.HandlerFunc(login))
 
-	srv := &http.Server{Addr: ":" + port, Handler: mux}
+	srv := &http.Server{Addr: ":" + config.Port, Handler: mux}
 
-	fmt.Println("Server run in port: " + port + ", and IP: " + getIPAddress())
+	fmt.Println("Server run in port: " + config.Port + ", and IP: " + utilities.GetIPAddress())
 
 	go func() {
-		if err := srv.ListenAndServeTLS("cert.pem", "key.pem"); err != nil {
+		if err := srv.ListenAndServeTLS(config.Certificates.Cert, config.Certificates.Key); err != nil {
 			ex, err := os.Executable()
 			if err != nil {
 				panic(err)

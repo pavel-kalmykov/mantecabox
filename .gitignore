@@ -19,3 +19,4 @@ pkg
 bin
 /src/github.com/stretchr
 /src/github.com/lib
+/src/github.com/alexrudd
