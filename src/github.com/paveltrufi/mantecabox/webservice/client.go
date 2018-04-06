@@ -24,7 +24,7 @@ func client() {
 	b := new(bytes.Buffer)
 	json.NewEncoder(b).Encode(usuario)
 
-	r, err := client.Post(endpoint, "application/json; charset=utf-8", b) // enviamos por POST
+	r, err := client.Post(endpoint, "application/json", b) // enviamos por POST
 
 	if err != nil {
 		panic(err)
