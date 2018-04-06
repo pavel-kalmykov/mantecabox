@@ -13,48 +13,62 @@ import (
 	"path/filepath"
 
 	"github.com/paveltrufi/mantecabox/models"
+	"strings"
+	"bytes"
 )
 
-func chk(e error) {
-	if e != nil {
-		panic(e)
-	}
-}
-
-type resp struct {
-	Ok  bool
-	message string
+type Resp struct {
+	Status  bool `json:"status"`
+	Message string `json:"message"`
 }
 
 func response(w io.Writer, ok bool, msg string) {
-	r := resp{Ok: ok, message: msg}
-	rJSON, err := json.Marshal(&r)
-	chk(err)
-	w.Write(rJSON)
+	r := Resp{Status: ok, Message: msg}
+	fmt.Print(r)
+
+	b := new(bytes.Buffer)
+	json.NewEncoder(b).Encode(&r)
+
+	w.Write(b.Bytes())
 }
 
-func emptyFields() string {
-	responseText := "'Empty body', '{username, password}' field required'"
+func emptyFields(field int) string {
+	responseText := "Empty body, {field} field required"
+	switch field {
+	case 1:
+		return strings.Replace(responseText, "field", "username", 1)
+	case 2:
+		return strings.Replace(responseText, "field", "password", 1)
+	case 3:
+		return strings.Replace(responseText, "field", "username, password", 1)
+	}
 	return responseText
 }
 
-func compruebaUserTest(user string, password string) (bool, string) {
+func compruebaUserTest(usuario models.User) (bool, string) {
 	testUser := "testuser"
 	passUser := "testsecret"
 
-	if user == testUser {
-		if password == passUser {
-			return true, "Test user OK"
-		} else if password == "" {
-			return false, emptyFields()
-		} else {
-			return true, "Invalid test user"
-		}
-	} else if password == "" {
-		return false, emptyFields()
-	} else {
-		return true, "Invalid test user"
+	testOK := "Test user OK"
+	testInvalid := "Invalid test user"
+
+	if usuario.Username == testUser && usuario.Password == passUser {
+		return true, testOK
 	}
+
+	if usuario.Username == "" && usuario.Password == "" {
+		return false, emptyFields(3)
+	}
+
+	if usuario.Username == "" {
+		return false, emptyFields(1)
+	}
+
+	if usuario.Password == "" {
+		return false, emptyFields(2)
+	}
+
+	return true, testInvalid
 }
 
 func login(w http.ResponseWriter, req *http.Request) {
@@ -63,11 +77,11 @@ func login(w http.ResponseWriter, req *http.Request) {
 		usuario := models.User{}
 
 		json.NewDecoder(req.Body).Decode(&usuario)
-		fmt.Println(usuario)
 
-		w.Header().Set("Content-Type", "text/plain")
+		w.Header().Set("Content-Type", "application/json")
 
-		ok, msg := compruebaUserTest(usuario.Username, usuario.Password)
+		ok, msg := compruebaUserTest(usuario)
+
 		response(w, ok, msg)
 	} else if req.Method == "GET" || req.Method == "HEAD" {
 

@@ -19,9 +19,7 @@ func client() {
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 	client := &http.Client{Transport: tr}
-	usuario := models.User{}
-	usuario.Username = "testuser"
-	usuario.Password = "testsecret"
+	usuario := models.User{Username: "testuser", Password:"testsecret"}
 
 	b := new(bytes.Buffer)
 	json.NewEncoder(b).Encode(usuario)
