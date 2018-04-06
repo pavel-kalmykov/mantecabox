@@ -112,7 +112,6 @@ func server() {
 			}
 			exPath := filepath.Dir(ex)
 			fmt.Println(exPath)
-			fmt.Println("Error ssl")
 		}
 	}()
 
