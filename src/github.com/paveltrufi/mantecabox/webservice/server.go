@@ -11,6 +11,8 @@ import (
 	"io"
 	"encoding/json"
 	"path/filepath"
+
+	"github.com/paveltrufi/mantecabox/models"
 )
 
 func chk(e error) {
@@ -57,19 +59,21 @@ func compruebaUserTest(user string, password string) (bool, string) {
 
 func login(w http.ResponseWriter, req *http.Request) {
 	if req.Method == "POST" {
-		req.ParseForm()
+
+		usuario := models.User{}
+
+		json.NewDecoder(req.Body).Decode(&usuario)
+		fmt.Println(usuario)
+
 		w.Header().Set("Content-Type", "text/plain")
 
-		username := req.Form.Get("username")
-		password := req.Form.Get("password")
-
-		ok, msg := compruebaUserTest(username, password)
+		ok, msg := compruebaUserTest(usuario.Username, usuario.Password)
 		response(w, ok, msg)
 	} else if req.Method == "GET" || req.Method == "HEAD" {
 
 	} else {
 		w.WriteHeader(405)
-		w.Write([]byte(`{"message": "Method Not Allowed"}`))
+		response(w, false, "Method Not Allowed")
 	}
 }
 
