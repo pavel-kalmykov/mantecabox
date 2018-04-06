@@ -19,12 +19,12 @@ import (
 )
 
 type Resp struct {
-	Status  bool `json:"status"`
+	Status  string `json:"status-code"`
 	Message string `json:"message"`
 }
 
-func response(w io.Writer, ok bool, msg string) {
-	r := Resp{Status: ok, Message: msg}
+func response(w io.Writer, statusCode string, msg string) {
+	r := Resp{Status: statusCode, Message: msg}
 	fmt.Print(r)
 
 	b := new(bytes.Buffer)
@@ -46,7 +46,7 @@ func emptyFields(field int) string {
 	return responseText
 }
 
-func compruebaUserTest(usuario models.User) (bool, string) {
+func compruebaUserTest(usuario models.User) (string, string) {
 	testUser := "testuser"
 	passUser := "testsecret"
 
@@ -54,22 +54,22 @@ func compruebaUserTest(usuario models.User) (bool, string) {
 	testInvalid := "Invalid test user"
 
 	if usuario.Username == testUser && usuario.Password == passUser {
-		return true, testOK
+		return "200", testOK
 	}
 
 	if usuario.Username == "" && usuario.Password == "" {
-		return false, emptyFields(3)
+		return "400", emptyFields(3)
 	}
 
 	if usuario.Username == "" {
-		return false, emptyFields(1)
+		return "400", emptyFields(1)
 	}
 
 	if usuario.Password == "" {
-		return false, emptyFields(2)
+		return "400", emptyFields(2)
 	}
 
-	return true, testInvalid
+	return "200", testInvalid
 }
 
 func login(w http.ResponseWriter, req *http.Request) {
@@ -81,14 +81,13 @@ func login(w http.ResponseWriter, req *http.Request) {
 
 		w.Header().Set("Content-Type", "application/json")
 
-		ok, msg := compruebaUserTest(usuario)
+		statusCode, msg := compruebaUserTest(usuario)
 
-		response(w, ok, msg)
+		response(w, statusCode, msg)
 	} else if req.Method == "GET" || req.Method == "HEAD" {
 
 	} else {
-		w.WriteHeader(405)
-		response(w, false, "Method Not Allowed")
+		response(w, "405", "Method Not Allowed")
 	}
 }
 
