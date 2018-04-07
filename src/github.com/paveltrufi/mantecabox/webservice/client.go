@@ -5,21 +5,21 @@ import (
 	"crypto/tls"
 	"io"
 	"os"
-	"fmt"
 	"bytes"
 	"encoding/json"
 	"github.com/paveltrufi/mantecabox/models"
 )
 
 func client() {
-
-	endpoint := "https://localhost:10443/login"
+	const endpoint = "https://localhost:10443/login"
+	const testUser = "testuser"
+	const passUser = "testsecret"
 
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 	client := &http.Client{Transport: tr}
-	usuario := models.User{Username: "testuser", Password:"testsecret"}
+	usuario := models.User{Username: testUser, Password:passUser}
 
 	b := new(bytes.Buffer)
 	json.NewEncoder(b).Encode(usuario)
@@ -30,8 +30,7 @@ func client() {
 		panic(err)
 	}
 
-	io.Copy(os.Stdout, r.Body) // mostramos el cuerpo de la respuesta (es un reader)
-	fmt.Println()
+	io.Copy(os.Stdout, r.Body)
 }
 
 func main() {

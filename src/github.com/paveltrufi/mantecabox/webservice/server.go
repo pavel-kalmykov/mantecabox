@@ -1,17 +1,14 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"context"
 	"time"
-	"io"
 	"encoding/json"
 	"path/filepath"
-
 	"github.com/paveltrufi/mantecabox/models"
 	"github.com/paveltrufi/mantecabox/utilities"
 	"strings"
@@ -19,75 +16,61 @@ import (
 )
 
 type Resp struct {
-	Status  string `json:"status-code"`
 	Message string `json:"message"`
 }
 
-func response(w io.Writer, statusCode string, msg string) {
-	r := Resp{Status: statusCode, Message: msg}
-	fmt.Print(r)
+func response(w http.ResponseWriter, statusCode int, msg string) {
+	response := Resp{Message: msg}
 
 	b := new(bytes.Buffer)
-	json.NewEncoder(b).Encode(&r)
+	json.NewEncoder(b).Encode(&response)
 
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(statusCode)
 	w.Write(b.Bytes())
 }
 
-func emptyFields(field int) string {
-	responseText := "Empty body, {field} field required"
-	switch field {
-	case 1:
-		return strings.Replace(responseText, "field", "username", 1)
-	case 2:
-		return strings.Replace(responseText, "field", "password", 1)
-	case 3:
-		return strings.Replace(responseText, "field", "username, password", 1)
-	}
-	return responseText
+func replaceEmptyField(field string) string {
+	const responseText = "Empty body, {field} field required"
+	return strings.Replace(responseText, "field", field, 1)
 }
 
-func compruebaUserTest(usuario models.User) (string, string) {
-	testUser := "testuser"
-	passUser := "testsecret"
-
-	testOK := "Test user OK"
-	testInvalid := "Invalid test user"
+func compruebaUserTest(usuario models.User) (int, string) {
+	const testUser = "testuser"
+	const passUser = "testsecret"
+	const testOK = "Test user OK"
+	const testInvalid = "Invalid test user"
 
 	if usuario.Username == testUser && usuario.Password == passUser {
-		return "200", testOK
+		return http.StatusOK, testOK
 	}
 
 	if usuario.Username == "" && usuario.Password == "" {
-		return "400", emptyFields(3)
+		return http.StatusBadRequest, replaceEmptyField("username, password")
 	}
 
 	if usuario.Username == "" {
-		return "400", emptyFields(1)
+		return http.StatusBadRequest, replaceEmptyField("username")
 	}
 
 	if usuario.Password == "" {
-		return "400", emptyFields(2)
+		return http.StatusBadRequest, replaceEmptyField("password")
 	}
 
-	return "200", testInvalid
+	return http.StatusOK, testInvalid
 }
 
 func login(w http.ResponseWriter, req *http.Request) {
-	if req.Method == "POST" {
-
+	switch req.Method {
+	case http.MethodPost:
 		usuario := models.User{}
-
 		json.NewDecoder(req.Body).Decode(&usuario)
-
-		w.Header().Set("Content-Type", "application/json")
-
 		statusCode, msg := compruebaUserTest(usuario)
-
 		response(w, statusCode, msg)
-	} else if req.Method == "GET" || req.Method == "HEAD" {
-
-	} else {
-		response(w, "405", "Method Not Allowed")
+	case http.MethodGet, http.MethodHead:
+		break
+	default:
+		response(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 	}
 }
 
@@ -96,13 +79,10 @@ func server() {
 	signal.Notify(stopChan, os.Interrupt)
 
 	config := utilities.GetServerConfiguration()
-
 	mux := http.NewServeMux()
 	mux.Handle("/login", http.HandlerFunc(login))
-
 	srv := &http.Server{Addr: ":" + config.Port, Handler: mux}
-
-	fmt.Println("Server run in port: " + config.Port + ", and IP: " + utilities.GetIPAddress())
+	log.Println("Server run in port: " + config.Port + ", and IP: " + utilities.GetIPAddress())
 
 	go func() {
 		if err := srv.ListenAndServeTLS(config.Certificates.Cert, config.Certificates.Key); err != nil {
@@ -111,17 +91,16 @@ func server() {
 				panic(err)
 			}
 			exPath := filepath.Dir(ex)
-			fmt.Println(exPath)
+			log.Println(exPath)
 		}
 	}()
 
 	<-stopChan
-	log.Println("Shutting down server...")
 
+	log.Println("Shutting down server...")
 	ctx, fnc := context.WithTimeout(context.Background(), 5*time.Second)
 	fnc()
 	srv.Shutdown(ctx)
-
 	log.Println("Server stopped correctly")
 }
 
