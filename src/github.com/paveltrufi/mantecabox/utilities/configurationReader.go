@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/paveltrufi/mantecabox/models"
 	"os"
+	"io/ioutil"
 )
 
 func GetConfiguration() (models.Configuration, error) {
@@ -24,4 +25,31 @@ func GetConfiguration() (models.Configuration, error) {
 	}
 	return config, nil
 
+}
+
+func GetServerConfiguration() models.ServerConfig {
+	configJsonPath := "./src/github.com/paveltrufi/mantecabox/webservice/config.json"
+	config := models.ServerConfig{}
+
+	file, e := ioutil.ReadFile(configJsonPath)
+	if e != nil {
+		config.Port = "10443"
+		config.Certificates.Cert = "cert.pem"
+		config.Certificates.Key = "key.pem"
+	}
+
+	if config.Port == "" {
+		config.Port = "10443"
+	}
+
+	if config.Certificates.Cert == "" {
+		config.Certificates.Cert = "cert.pem"
+	}
+
+	if config.Certificates.Key == "" {
+		config.Certificates.Key = "key.pem"
+	}
+
+	json.Unmarshal(file, &config)
+	return config
 }
