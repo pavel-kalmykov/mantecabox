@@ -1,4 +1,4 @@
-package main
+package webservice
 
 import (
 	"log"
@@ -102,8 +102,4 @@ func server() {
 	fnc()
 	srv.Shutdown(ctx)
 	log.Println("Server stopped correctly")
-}
-
-func main() {
-	server()
 }

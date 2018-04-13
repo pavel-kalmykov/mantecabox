@@ -1,13 +1,13 @@
-package main
+package webservice
 
 import (
-	"net/http"
-	"crypto/tls"
-	"io"
-	"os"
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"github.com/paveltrufi/mantecabox/models"
+	"io"
+	"net/http"
+	"os"
 )
 
 func client() {
@@ -19,7 +19,7 @@ func client() {
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
 	client := &http.Client{Transport: tr}
-	usuario := models.User{Username: testUser, Password:passUser}
+	usuario := models.User{Credentials: models.Credentials{Username: testUser, Password: passUser}}
 
 	b := new(bytes.Buffer)
 	json.NewEncoder(b).Encode(usuario)
@@ -31,8 +31,4 @@ func client() {
 	}
 
 	io.Copy(os.Stdout, r.Body)
-}
-
-func main() {
-	client()
 }
