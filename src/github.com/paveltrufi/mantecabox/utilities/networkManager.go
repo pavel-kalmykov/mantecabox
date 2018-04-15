@@ -1,9 +1,9 @@
 package utilities
 
 import (
+	"log"
 	"net"
 	"strings"
-	"log"
 )
 
 func GetIPAddress() string {

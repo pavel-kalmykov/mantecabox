@@ -2,9 +2,10 @@ package utilities
 
 import (
 	"encoding/json"
-	"github.com/paveltrufi/mantecabox/models"
-	"os"
 	"io/ioutil"
+	"os"
+
+	"github.com/paveltrufi/mantecabox/models"
 )
 
 func GetConfiguration() (models.Configuration, error) {

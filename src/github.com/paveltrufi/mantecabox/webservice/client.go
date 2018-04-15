@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
-	"github.com/paveltrufi/mantecabox/models"
 	"io"
 	"net/http"
 	"os"
+
+	"github.com/paveltrufi/mantecabox/models"
 )
 
 func client() {
