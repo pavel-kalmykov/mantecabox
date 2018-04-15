@@ -3,12 +3,13 @@ package postgres
 import (
 	"database/sql"
 	"fmt"
+	"log"
+
 	_ "github.com/lib/pq"
 	"github.com/paveltrufi/mantecabox/utilities"
-	"log"
 )
 
-func get() *sql.DB {
+func GetPgDb() *sql.DB {
 	config, err := utilities.GetConfiguration()
 	if err != nil {
 		log.Fatalln(err)

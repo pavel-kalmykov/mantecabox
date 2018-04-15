@@ -189,7 +189,7 @@ func TestFilePgDao_Create(t *testing.T) {
 		},
 	}
 
-	db := get()
+	db := GetPgDb()
 	defer db.Close()
 
 	for _, testCase := range testCases {
@@ -255,7 +255,7 @@ func TestUpdate(t *testing.T) {
 		},
 	}
 
-	db := get()
+	db := GetPgDb()
 	defer db.Close()
 
 	for _, testCase := range testCases {

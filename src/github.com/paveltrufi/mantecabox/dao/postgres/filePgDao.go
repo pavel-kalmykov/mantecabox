@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"errors"
+
 	log "github.com/alexrudd/go-logger"
 	"github.com/paveltrufi/mantecabox/models"
 )
@@ -11,7 +12,7 @@ type FilePgDao struct {
 
 func (dao FilePgDao) GetAll() ([]models.File, error) {
 	files := make([]models.File, 0)
-	db := get()
+	db := GetPgDb()
 	defer db.Close()
 
 	rows, err := db.Query(`SELECT
@@ -48,7 +49,7 @@ WHERE f.deleted_at IS NULL AND u.deleted_at IS NULL `)
 func (dao FilePgDao) GetByPk(id int64) (models.File, error) {
 	file := models.File{}
 	owner := ""
-	db := get()
+	db := GetPgDb()
 	defer db.Close()
 
 	err := db.QueryRow(`SELECT
@@ -73,7 +74,7 @@ WHERE f.deleted_at IS NULL AND u.deleted_at IS NULL AND f.id = $1`, id).Scan(
 }
 
 func (dao FilePgDao) Create(file *models.File) (models.File, error) {
-	db := get()
+	db := GetPgDb()
 	defer db.Close()
 
 	var createdFile models.File
@@ -103,7 +104,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *;`, f
 }
 
 func Update(id int64, file *models.File) (models.File, error) {
-	db := get()
+	db := GetPgDb()
 	defer db.Close()
 
 	var updatedFile models.File
@@ -148,7 +149,7 @@ RETURNING *`,
 }
 
 func Delete(id int64) error {
-	db := get()
+	db := GetPgDb()
 	defer db.Close()
 
 	result, err := db.Exec("DELETE FROM files WHERE id = $1", id)

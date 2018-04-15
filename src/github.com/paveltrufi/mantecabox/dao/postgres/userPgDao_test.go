@@ -2,13 +2,14 @@ package postgres
 
 import (
 	"database/sql"
+	"os"
+	"testing"
+
 	"github.com/aodin/date"
 	"github.com/lib/pq"
 	"github.com/paveltrufi/mantecabox/models"
 	"github.com/paveltrufi/mantecabox/utilities"
 	"github.com/stretchr/testify/require"
-	"os"
-	"testing"
 )
 
 const testUserInsert = `INSERT INTO users (username, password) VALUES ('testuser1', 'testpassword1');`
@@ -19,7 +20,7 @@ func TestMain(m *testing.M) {
 
 	code := m.Run()
 
-	db := get()
+	db := GetPgDb()
 	cleanDb(db)
 	os.Exit(code)
 }
@@ -307,7 +308,7 @@ func TestUserPgDao_Delete(t *testing.T) {
 
 func getDb(t *testing.T) *sql.DB {
 	// Test preparation
-	db := get()
+	db := GetPgDb()
 	require.NotNil(t, db)
 	return db
 }

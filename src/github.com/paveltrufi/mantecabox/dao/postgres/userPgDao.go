@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"errors"
+
 	log "github.com/alexrudd/go-logger"
 	"github.com/paveltrufi/mantecabox/models"
 )
@@ -11,7 +12,7 @@ type UserPgDao struct {
 
 func (dao UserPgDao) GetAll() ([]models.User, error) {
 	users := make([]models.User, 0)
-	db := get()
+	db := GetPgDb()
 	defer db.Close()
 
 	rows, err := db.Query("SELECT * FROM users WHERE deleted_at IS NULL")
@@ -36,7 +37,7 @@ func (dao UserPgDao) GetAll() ([]models.User, error) {
 
 func (dao UserPgDao) GetByPk(username string) (models.User, error) {
 	user := models.User{}
-	db := get()
+	db := GetPgDb()
 	defer db.Close()
 
 	err := db.QueryRow("SELECT * FROM users WHERE username = $1 AND deleted_at IS NULL", username).Scan(
@@ -51,7 +52,7 @@ func (dao UserPgDao) GetByPk(username string) (models.User, error) {
 }
 
 func (dao UserPgDao) Create(user *models.User) (models.User, error) {
-	db := get()
+	db := GetPgDb()
 	defer db.Close()
 
 	var createdUser models.User
@@ -69,7 +70,7 @@ func (dao UserPgDao) Create(user *models.User) (models.User, error) {
 }
 
 func (dao UserPgDao) Update(username string, user *models.User) (models.User, error) {
-	db := get()
+	db := GetPgDb()
 	defer db.Close()
 
 	var updatedUser models.User
@@ -87,7 +88,7 @@ func (dao UserPgDao) Update(username string, user *models.User) (models.User, er
 }
 
 func (dao UserPgDao) Delete(username string) error {
-	db := get()
+	db := GetPgDb()
 	defer db.Close()
 
 	result, err := db.Exec("DELETE FROM users WHERE username = $1", username)
