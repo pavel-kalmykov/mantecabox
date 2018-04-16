@@ -26,6 +26,55 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
+func TestGetUsers(t *testing.T) {
+	db := getDb(t)
+	defer db.Close()
+	tests := []struct {
+		name string
+		test func(*testing.T)
+	}{
+		{
+			"Get users test",
+			func(t *testing.T) {
+				actualUsers, err := GetUsers()
+				require.NoError(t, err)
+				require.NotEmpty(t, actualUsers)
+			},
+		},
+	}
+	for _, tt := range tests {
+		cleanDb(db)
+		userDao.Create(&models.User{Credentials: models.Credentials{Username: "testuser", Password: "testpassword"}})
+		userDao.Create(&models.User{Credentials: models.Credentials{Username: "testuser2", Password: "testpassword2"}})
+		t.Run(tt.name, tt.test)
+	}
+
+}
+
+func TestGetUser(t *testing.T) {
+	db := getDb(t)
+	defer db.Close()
+	tests := []struct {
+		name string
+		test func(*testing.T)
+	}{
+		{
+			"Get user test",
+			func(t *testing.T) {
+				actualUser, err := GetUser("testuser")
+				require.NoError(t, err)
+				require.Equal(t, "testuser", actualUser.Username)
+				require.Equal(t, "testpassword", actualUser.Password)
+			},
+		},
+	}
+	for _, tt := range tests {
+		cleanDb(db)
+		userDao.Create(&models.User{Credentials: models.Credentials{Username: "testuser", Password: "testpassword"}})
+		t.Run(tt.name, tt.test)
+	}
+}
+
 func TestRegisterUser(t *testing.T) {
 	db := getDb(t)
 	defer db.Close()

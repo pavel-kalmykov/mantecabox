@@ -40,6 +40,14 @@ func init() {
 	usernameRegex = usernameCompile
 }
 
+func GetUsers() ([]models.User, error) {
+	return userDao.GetAll()
+}
+
+func GetUser(username string) (models.User, error) {
+	return userDao.GetByPk(username)
+}
+
 func RegisterUser(c *models.Credentials) (models.User, error) {
 	var user models.User
 	if err := validateCredentials(c); err != nil {
