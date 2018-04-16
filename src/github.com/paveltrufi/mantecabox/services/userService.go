@@ -84,6 +84,10 @@ func ModifyUser(username string, u *models.User) (models.User, error) {
 	return userDao.Update(username, &user)
 }
 
+func DeleteUser(username string) error {
+	return userDao.Delete(username)
+}
+
 func validateCredentials(c *models.Credentials) error {
 	decodedPassword, err := base64.URLEncoding.DecodeString(c.Password)
 	if err != nil {

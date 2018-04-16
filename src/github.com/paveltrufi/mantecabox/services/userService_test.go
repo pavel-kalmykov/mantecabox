@@ -217,3 +217,25 @@ func getDb(t *testing.T) *sql.DB {
 func cleanDb(db *sql.DB) {
 	db.Exec("DELETE FROM users")
 }
+
+func TestDeleteUser(t *testing.T) {
+	db := getDb(t)
+	defer db.Close()
+	tests := []struct {
+		name string
+		test func(*testing.T)
+	}{
+		{
+			"Delete user test",
+			func(t *testing.T) {
+				err := DeleteUser("testuser")
+				require.NoError(t, err)
+			},
+		},
+	}
+	for _, tt := range tests {
+		cleanDb(db)
+		userDao.Create(&models.User{Credentials: models.Credentials{Username: "testuser", Password: "testpassword"}})
+		t.Run(tt.name, tt.test)
+	}
+}
