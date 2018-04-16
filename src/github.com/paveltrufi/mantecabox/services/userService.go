@@ -60,6 +60,30 @@ func RegisterUser(c *models.Credentials) (models.User, error) {
 	return userDao.Create(&user)
 }
 
+func ModifyUser(username string, u *models.User) (models.User, error) {
+	var user models.User
+	if err := validateCredentials(&u.Credentials); err != nil {
+		return user, err
+	}
+	decodedPassword, err := base64.URLEncoding.DecodeString(u.Password)
+	if err != nil {
+		return user, err
+	}
+	bcryptedPassword, err := bcrypt.GenerateFromPassword(decodedPassword, bcrypt.DefaultCost)
+	if err != nil {
+		return user, err
+	}
+	user = models.User{
+		TimeStamp:  u.TimeStamp,
+		SoftDelete: u.SoftDelete,
+		Credentials: models.Credentials{
+			Username: u.Username,
+			Password: base64.URLEncoding.EncodeToString(aes.Encrypt(bcryptedPassword)),
+		},
+	}
+	return userDao.Update(username, &user)
+}
+
 func validateCredentials(c *models.Credentials) error {
 	decodedPassword, err := base64.URLEncoding.DecodeString(c.Password)
 	if err != nil {
