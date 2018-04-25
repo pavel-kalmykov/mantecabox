@@ -2,19 +2,14 @@ package webservice
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
-	"log"
 	"net/http"
-	"os"
-	"os/signal"
-	"path/filepath"
 	"strings"
-	"time"
 
-	"github.com/paveltrufi/mantecabox/controllers"
-	"github.com/paveltrufi/mantecabox/models"
+	"github.com/gin-gonic/gin"
 	"github.com/paveltrufi/mantecabox/utilities"
+
+	"github.com/paveltrufi/mantecabox/models"
 )
 
 type Resp struct {
@@ -37,71 +32,51 @@ func replaceEmptyField(field string) string {
 	return strings.Replace(responseText, "field", field, 1)
 }
 
-func compruebaUserTest(usuario models.User) (int, string) {
+func compruebaUserTest(credentials models.Credentials) (int, string) {
 	const testUser = "testuser"
 	const passUser = "testsecret"
 	const testOK = "Test user OK"
 	const testInvalid = "Invalid test user"
 
-	if usuario.Username == testUser && usuario.Password == passUser {
+	if credentials.Username == testUser && credentials.Password == passUser {
 		return http.StatusOK, testOK
 	}
 
-	if usuario.Username == "" && usuario.Password == "" {
+	if credentials.Username == "" && credentials.Password == "" {
 		return http.StatusBadRequest, replaceEmptyField("username, password")
 	}
 
-	if usuario.Username == "" {
+	if credentials.Username == "" {
 		return http.StatusBadRequest, replaceEmptyField("username")
 	}
 
-	if usuario.Password == "" {
+	if credentials.Password == "" {
 		return http.StatusBadRequest, replaceEmptyField("password")
 	}
 
 	return http.StatusOK, testInvalid
 }
 
-func login(w http.ResponseWriter, req *http.Request) {
-	switch req.Method {
+func login(c *gin.Context) {
+	switch c.Request.Method {
 	case http.MethodPost:
-		usuario := models.User{}
-		json.NewDecoder(req.Body).Decode(&usuario)
+		var usuario models.Credentials
+		err := c.ShouldBindJSON(&usuario)
+		if err != nil {
+			panic(err)
+		}
 		statusCode, msg := compruebaUserTest(usuario)
-		response(w, statusCode, msg)
+		response(c.Writer, statusCode, msg)
 	case http.MethodGet, http.MethodHead:
 		break
 	default:
-		response(w, http.StatusMethodNotAllowed, "Method Not Allowed")
+		response(c.Writer, http.StatusMethodNotAllowed, "Method Not Allowed")
 	}
 }
 
-func server() {
-	stopChan := make(chan os.Signal)
-	signal.Notify(stopChan, os.Interrupt)
-
-	config := utilities.GetServerConfiguration()
-	mux := http.NewServeMux()
-	mux.Handle("/login", http.HandlerFunc(login))
-	srv := &http.Server{Addr: ":" + config.Port, Handler: mux}
-	log.Println("Server run in port: " + config.Port + ", and IP: " + utilities.GetIPAddress())
-
-	go func() {
-		if err := srv.ListenAndServeTLS(config.Certificates.Cert, config.Certificates.Key); err != nil {
-			ex, err := os.Executable()
-			if err != nil {
-				panic(err)
-			}
-			exPath := filepath.Dir(ex)
-			log.Println(exPath)
-		}
-	}()
-
-	<-stopChan
-
-	log.Println("Shutting down server...")
-	ctx, fnc := context.WithTimeout(context.Background(), 5*time.Second)
-	fnc()
-	srv.Shutdown(ctx)
-	log.Println("Server stopped correctly")
+func Server() {
+	conf := utilities.GetServerConfiguration()
+	r := gin.Default()
+	r.Any("/login", login)
+	r.RunTLS(":"+conf.Port, conf.Cert, conf.Key)
 }
