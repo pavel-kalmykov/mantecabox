@@ -11,6 +11,10 @@ type User struct {
 	Credentials
 }
 
+type UserDto struct {
+	Username string `json:"username"`
+}
+
 type UserWithFiles struct {
 	User
 	Files []File `json:"files"`

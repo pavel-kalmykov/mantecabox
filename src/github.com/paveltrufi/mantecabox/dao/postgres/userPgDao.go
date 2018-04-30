@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"database/sql"
 	"errors"
 
 	log "github.com/alexrudd/go-logger"
@@ -102,7 +103,7 @@ func (dao UserPgDao) Delete(username string) error {
 		} else {
 			switch {
 			case rowsAffected == 0:
-				err = errors.New("not found")
+				err = sql.ErrNoRows
 			case rowsAffected > 1:
 				err = errors.New("more than one deleted")
 			}
