@@ -2,13 +2,14 @@ package postgres
 
 import (
 	"database/sql"
+	"os"
+	"testing"
+
 	"github.com/aodin/date"
 	"github.com/lib/pq"
 	"github.com/paveltrufi/mantecabox/models"
 	"github.com/paveltrufi/mantecabox/utilities"
 	"github.com/stretchr/testify/require"
-	"os"
-	"testing"
 )
 
 const testUserInsert = `INSERT INTO users (username, password) VALUES ('testuser1', 'testpassword1');`
@@ -19,7 +20,7 @@ func TestMain(m *testing.M) {
 
 	code := m.Run()
 
-	db := get()
+	db := GetPgDb()
 	cleanDb(db)
 	os.Exit(code)
 }
@@ -36,8 +37,8 @@ func TestUserPgDao_GetAll(t *testing.T) {
 VALUES  ('testuser1', 'testpassword1'),
 		('testuser2', 'testpassword2')`,
 			[]models.User{
-				{Username: "testuser1", Password: "testpassword1"},
-				{Username: "testuser2", Password: "testpassword2"},
+				{Credentials: models.Credentials{Username: "testuser1", Password: "testpassword1"}},
+				{Credentials: models.Credentials{Username: "testuser2", Password: "testpassword2"}},
 			},
 		},
 		{
@@ -51,7 +52,7 @@ VALUES  ('testuser1', 'testpassword1'),
 VALUES  (NULL, 'testuser1', 'testpassword1'),
 		(NOW(), 'testuser2', 'testpassword2')`,
 			[]models.User{
-				{Username: "testuser1", Password: "testpassword1"},
+				{Credentials: models.Credentials{Username: "testuser1", Password: "testpassword1"}},
 			},
 		},
 	}
@@ -97,7 +98,7 @@ func TestUserPgDao_GetByPk(t *testing.T) {
 			"When you ask for an existent user, retrieve it",
 			testUserInsert,
 			args{username: "testuser1"},
-			models.User{Username: "testuser1", Password: "testpassword1"},
+			models.User{Credentials: models.Credentials{Username: "testuser1", Password: "testpassword1"}},
 			false,
 		},
 		{
@@ -139,7 +140,7 @@ VALUES (NOW(), 'testuser1', 'testpassword1');`,
 }
 
 func TestUserPgDao_Create(t *testing.T) {
-	user := models.User{Username: "testuser1", Password: "testpassword1"}
+	user := models.User{Credentials: models.Credentials{Username: "testuser1", Password: "testpassword1"}}
 	type args struct {
 		user *models.User
 	}
@@ -167,14 +168,14 @@ func TestUserPgDao_Create(t *testing.T) {
 		{
 			"When you create a new user without username, return an empty user and an error",
 			"",
-			args{user: &models.User{Password: "testpassword1"}},
+			args{user: &models.User{Credentials: models.Credentials{Password: "testpassword1"}}},
 			models.User{},
 			true,
 		},
 		{
 			"When you create a new user without password, return an empty user and an error",
 			"",
-			args{user: &models.User{Username: "testuser1"}},
+			args{user: &models.User{Credentials: models.Credentials{Username: "testuser1"}}},
 			models.User{},
 			true,
 		},
@@ -194,7 +195,7 @@ func TestUserPgDao_Create(t *testing.T) {
 	}
 }
 func TestUserPgDao_Update(t *testing.T) {
-	user := models.User{Username: "testuser2", Password: "testpassword2"}
+	user := models.User{Credentials: models.Credentials{Username: "testuser2", Password: "testpassword2"}}
 	type args struct {
 		username string
 		user     *models.User
@@ -230,14 +231,14 @@ func TestUserPgDao_Update(t *testing.T) {
 		{
 			"When you update an inserted user without username, return an empty user and an error",
 			testUserInsert,
-			args{username: "testuser1", user: &models.User{Password: "testpassword2"}},
+			args{username: "testuser1", user: &models.User{Credentials: models.Credentials{Password: "testpassword2"}}},
 			models.User{},
 			true,
 		},
 		{
 			"When you update an inserted user without password, return an empty user and an error",
 			testUserInsert,
-			args{username: "testuser1", user: &models.User{Username: "testuser2"}},
+			args{username: "testuser1", user: &models.User{Credentials: models.Credentials{Username: "testuser2"}}},
 			models.User{},
 			true,
 		},
@@ -307,7 +308,7 @@ func TestUserPgDao_Delete(t *testing.T) {
 
 func getDb(t *testing.T) *sql.DB {
 	// Test preparation
-	db := get()
+	db := GetPgDb()
 	require.NotNil(t, db)
 	return db
 }

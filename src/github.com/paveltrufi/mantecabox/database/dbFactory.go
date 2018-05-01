@@ -3,8 +3,9 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"github.com/paveltrufi/mantecabox/utilities"
 	"log"
+
+	"github.com/paveltrufi/mantecabox/utilities"
 )
 
 func GetDbReadingConfig() (*sql.DB, error) {
