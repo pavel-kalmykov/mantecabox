@@ -7,6 +7,6 @@ import (
 
 func main() {
 	conf := utilities.GetServerConfiguration()
-	r := webservice.Server()
+	r := webservice.Router(true)
 	r.RunTLS(":"+conf.Port, conf.Cert, conf.Key)
 }
