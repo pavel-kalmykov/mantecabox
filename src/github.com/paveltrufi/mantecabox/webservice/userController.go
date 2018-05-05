@@ -3,12 +3,30 @@ package webservice
 import (
 	"database/sql"
 	"net/http"
+	"time"
 
 	"github.com/PeteProgrammer/go-automapper"
+	"github.com/appleboy/gin-jwt"
 	"github.com/gin-gonic/gin"
 	"github.com/paveltrufi/mantecabox/models"
 	"github.com/paveltrufi/mantecabox/services"
+	"github.com/paveltrufi/mantecabox/utilities/aes"
 )
+
+// the jwt middleware
+var AuthMiddleware = &jwt.GinJWTMiddleware{
+	Realm:      "Mantecabox",
+	Key:        aes.Key,
+	Timeout:    time.Hour,
+	MaxRefresh: time.Hour,
+	Authenticator: func(username string, password string, _ *gin.Context) (string, bool) {
+		return services.UserExists(username, password)
+	},
+	Authorizator: func(username string, c *gin.Context) bool {
+		userparam := c.Param("username")
+		return userparam == "" || userparam == username
+	},
+}
 
 func GetUsers(c *gin.Context) {
 	users, err := services.GetUsers()

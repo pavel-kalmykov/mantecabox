@@ -96,6 +96,26 @@ func DeleteUser(username string) error {
 	return userDao.Delete(username)
 }
 
+func UserExists(username, password string) (string, bool) {
+	user, err := userDao.GetByPk(username)
+	if err != nil {
+		return username, false
+	}
+	decodedExpectedPassword, err := base64.URLEncoding.DecodeString(password)
+	if err != nil {
+		return username, false
+	}
+	decodedActualPassword, err := base64.URLEncoding.DecodeString(user.Password)
+	if err != nil {
+		return username, false
+	}
+	err = bcrypt.CompareHashAndPassword(aes.Decrypt(decodedActualPassword), decodedExpectedPassword)
+	if err != nil {
+		return username, false
+	}
+	return username, true
+}
+
 func validateCredentials(c *models.Credentials) error {
 	decodedPassword, err := base64.URLEncoding.DecodeString(c.Password)
 	if err != nil {
