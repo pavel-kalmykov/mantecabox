@@ -14,6 +14,9 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// base64(sha512(password))
+const correctPassword = "MTg2NEU3NTRCN0QyOENDOTk0OURDQkI1MEVFM0FFNEY3NTdCRjc1MTAwRjBDMkMzRTM3RDUxQ0Y0QURDNEVDREU0NDhCODQ2ODdEQTg3QjY5RTJGNkRCNTQwRUVFODMwNDM1MjY0RDlGNDcwNzc5MTQ4MUYyNUQ0NUUyOEQ5MTA="
+
 func TestMain(m *testing.M) {
 	utilities.StartDockerPostgresDb()
 	// os.Setenv("MANTECABOX_CONFIG_FILE", "configuration.test.json")
@@ -54,6 +57,10 @@ func TestGetUsers(t *testing.T) {
 func TestGetUser(t *testing.T) {
 	db := getDb(t)
 	defer db.Close()
+	expectedCredentials := models.Credentials{
+		Username: "testuser",
+		Password: correctPassword,
+	}
 	tests := []struct {
 		name string
 		test func(*testing.T)
@@ -64,13 +71,18 @@ func TestGetUser(t *testing.T) {
 				actualUser, err := GetUser("testuser")
 				require.NoError(t, err)
 				require.Equal(t, "testuser", actualUser.Username)
-				require.Equal(t, "testpassword", actualUser.Password)
+				decodedExpectedPassword, err := base64.URLEncoding.DecodeString(expectedCredentials.Password)
+				require.NoError(t, err)
+				decodedActualPassword, err := base64.URLEncoding.DecodeString(actualUser.Password)
+				require.NoError(t, err)
+				err = bcrypt.CompareHashAndPassword(aes.Decrypt(decodedActualPassword), decodedExpectedPassword)
+				require.NoError(t, err)
 			},
 		},
 	}
 	for _, tt := range tests {
 		cleanDb(db)
-		userDao.Create(&models.User{Credentials: models.Credentials{Username: "testuser", Password: "testpassword"}})
+		RegisterUser(&expectedCredentials)
 		t.Run(tt.name, tt.test)
 	}
 }
@@ -87,8 +99,7 @@ func TestRegisterUser(t *testing.T) {
 			func(t *testing.T) {
 				expectedCredentials := models.Credentials{
 					Username: "testuser",
-					// base64(sha512(password))
-					Password: "MTg2NEU3NTRCN0QyOENDOTk0OURDQkI1MEVFM0FFNEY3NTdCRjc1MTAwRjBDMkMzRTM3RDUxQ0Y0QURDNEVDREU0NDhCODQ2ODdEQTg3QjY5RTJGNkRCNTQwRUVFODMwNDM1MjY0RDlGNDcwNzc5MTQ4MUYyNUQ0NUUyOEQ5MTA=",
+					Password: correctPassword,
 				}
 
 				actualUser, err := RegisterUser(&expectedCredentials)
@@ -166,8 +177,7 @@ func TestModifyUser(t *testing.T) {
 				expectedUser := models.User{
 					Credentials: models.Credentials{
 						Username: "updateduser",
-						// base64(sha512(password))
-						Password: "MTg2NEU3NTRCN0QyOENDOTk0OURDQkI1MEVFM0FFNEY3NTdCRjc1MTAwRjBDMkMzRTM3RDUxQ0Y0QURDNEVDREU0NDhCODQ2ODdEQTg3QjY5RTJGNkRCNTQwRUVFODMwNDM1MjY0RDlGNDcwNzc5MTQ4MUYyNUQ0NUUyOEQ5MTA=",
+						Password: correctPassword,
 					},
 				}
 
@@ -238,8 +248,7 @@ func TestModifyUser(t *testing.T) {
 				expectedUser := models.User{
 					Credentials: models.Credentials{
 						Username: "updateduser",
-						// base64(sha512(password))
-						Password: "MTg2NEU3NTRCN0QyOENDOTk0OURDQkI1MEVFM0FFNEY3NTdCRjc1MTAwRjBDMkMzRTM3RDUxQ0Y0QURDNEVDREU0NDhCODQ2ODdEQTg3QjY5RTJGNkRCNTQwRUVFODMwNDM1MjY0RDlGNDcwNzc5MTQ4MUYyNUQ0NUUyOEQ5MTA=",
+						Password: correctPassword,
 					},
 				}
 
@@ -275,16 +284,73 @@ func TestDeleteUser(t *testing.T) {
 		test func(*testing.T)
 	}{
 		{
-			"Delete user test",
+			"When the user exists, delete it",
 			func(t *testing.T) {
 				err := DeleteUser("testuser")
 				require.NoError(t, err)
+			},
+		},
+		{
+			name: "When the user doesn't exist, return an error",
+			test: func(t *testing.T) {
+				err := DeleteUser("nonexistent")
+				require.Equal(t, sql.ErrNoRows, err)
 			},
 		},
 	}
 	for _, tt := range tests {
 		cleanDb(db)
 		userDao.Create(&models.User{Credentials: models.Credentials{Username: "testuser", Password: "testpassword"}})
+		t.Run(tt.name, tt.test)
+	}
+}
+
+func TestUserExists(t *testing.T) {
+	db := getDb(t)
+	defer db.Close()
+	tests := []struct {
+		name string
+		test func(*testing.T)
+	}{
+		{
+			name: "When the user exists and password is correct, return true",
+			test: func(t *testing.T) {
+				username, exists := UserExists("testuser", correctPassword)
+				require.Equal(t, "testuser", username)
+				require.True(t, exists)
+			},
+		},
+		{
+			name: "When the user exists but password is not in base64, return false",
+			test: func(t *testing.T) {
+				username, exists := UserExists("testuser", "testpassword")
+				require.Equal(t, "testuser", username)
+				require.False(t, exists)
+			},
+		},
+		{
+			name: "When the user exists but password is incorrect, return false",
+			test: func(t *testing.T) {
+				username, exists := UserExists("testuser", "MzFkYzhlYmMzZDhhN2U0ZjlhMzU4N2RkYWJkOGMxYmEwYjE5Yjc5ZjU2MWU1Yzk2MDhjYjQ4ZDRiMTRlOWFmMA==")
+				require.Equal(t, "testuser", username)
+				require.False(t, exists)
+			},
+		},
+		{
+			name: "When the user doesn't exist, return false",
+			test: func(t *testing.T) {
+				username, exists := UserExists("nonexistent", "")
+				require.Equal(t, "nonexistent", username)
+				require.False(t, exists)
+			},
+		},
+	}
+	for _, tt := range tests {
+		cleanDb(db)
+		RegisterUser(&models.Credentials{
+			Username: "testuser",
+			Password: correctPassword,
+		})
 		t.Run(tt.name, tt.test)
 	}
 }

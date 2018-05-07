@@ -12,17 +12,17 @@ import (
 
 var (
 	KeyStr = "6368616e676520746869732070617373" // FIXME this key should be obtained in an external way to the program
-	key    []byte
+	Key    []byte
 )
 
 func init() {
 	bytes, err := hex.DecodeString(KeyStr)
-	key = bytes
+	Key = bytes
 	processErr(err)
 }
 
 func Encrypt(plaintext []byte) []byte {
-	block, err := aes.NewCipher(key)
+	block, err := aes.NewCipher(Key)
 	processErr(err)
 
 	// The IV needs to be unique, but not secure. Therefore it's common to
@@ -40,7 +40,7 @@ func Encrypt(plaintext []byte) []byte {
 }
 
 func Decrypt(ciphertext []byte) []byte {
-	block, err := aes.NewCipher(key)
+	block, err := aes.NewCipher(Key)
 	processErr(err)
 
 	// The IV needs to be unique, but not secure. Therefore it's common to
