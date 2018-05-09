@@ -1,9 +1,12 @@
 package services
 
 import (
+	"crypto/sha512"
 	"database/sql"
 	"encoding/base64"
+	"encoding/hex"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/paveltrufi/mantecabox/dao/postgres"
@@ -14,8 +17,13 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// base64(sha512(password))
-const correctPassword = "MTg2NEU3NTRCN0QyOENDOTk0OURDQkI1MEVFM0FFNEY3NTdCRjc1MTAwRjBDMkMzRTM3RDUxQ0Y0QURDNEVDREU0NDhCODQ2ODdEQTg3QjY5RTJGNkRCNTQwRUVFODMwNDM1MjY0RDlGNDcwNzc5MTQ4MUYyNUQ0NUUyOEQ5MTA="
+var correctPassword = "testsecret"
+
+func init() {
+	sum512 := sha512.Sum512([]byte(correctPassword))
+	str := strings.ToUpper(hex.EncodeToString(sum512[:]))
+	correctPassword = base64.URLEncoding.EncodeToString([]byte(str))
+}
 
 func TestMain(m *testing.M) {
 	utilities.StartDockerPostgresDb()
