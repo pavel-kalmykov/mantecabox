@@ -17,3 +17,15 @@ func UserDaoFactory(engine string) interfaces.UserDao {
 	}
 	return userDao
 }
+
+func FileDaoFactory(engine string) interfaces.FileDao {
+	var userDao interfaces.FileDao
+	switch engine {
+	case "postgres":
+		userDao = postgres.FilePgDao{}
+	default:
+		log.Info(engine, "engine is not yet implemented")
+		return nil
+	}
+	return userDao
+}

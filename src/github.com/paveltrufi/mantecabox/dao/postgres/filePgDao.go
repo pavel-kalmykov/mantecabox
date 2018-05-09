@@ -103,7 +103,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *;`, f
 	return createdFile, err
 }
 
-func Update(id int64, file *models.File) (models.File, error) {
+func (dao FilePgDao) Update(id int64, file *models.File) (models.File, error) {
 	db := GetPgDb()
 	defer db.Close()
 
@@ -148,7 +148,7 @@ RETURNING *`,
 	return updatedFile, err
 }
 
-func Delete(id int64) error {
+func (dao FilePgDao) Delete(id int64) error {
 	db := GetPgDb()
 	defer db.Close()
 

@@ -270,7 +270,8 @@ func TestUpdate(t *testing.T) {
 			}
 		}
 		t.Run(testCase.name, func(t *testing.T) {
-			got, err := Update(testCase.args.id, testCase.args.file)
+			dao := FilePgDao{}
+			got, err := dao.Update(testCase.args.id, testCase.args.file)
 			requireFileEqualCheckingErrors(t, testCase.wantErr, err, testCase.want, got)
 		})
 	}
@@ -312,7 +313,8 @@ func TestDelete(t *testing.T) {
 			}
 		}
 		t.Run(testCase.name, func(t *testing.T) {
-			err := Delete(testCase.args.id)
+			dao := FilePgDao{}
+			err := dao.Delete(testCase.args.id)
 			if testCase.wantErr {
 				require.Error(t, err)
 			} else {
