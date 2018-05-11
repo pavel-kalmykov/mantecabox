@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func Router(userJWT bool) *gin.Engine {
+func Router(useJWT bool) *gin.Engine {
 	r := gin.Default()
 
 	r.POST("/register", RegisterUser)
@@ -12,13 +12,17 @@ func Router(userJWT bool) *gin.Engine {
 	r.GET("/refresh_token", AuthMiddleware.RefreshHandler)
 
 	users := r.Group("/users")
-	if userJWT {
+	if useJWT {
 		users.Use(AuthMiddleware.MiddlewareFunc())
 	}
+
 	users.GET("", GetUsers) // Useful?
 	users.GET("/:username", GetUser)
 	users.PUT("/:username", ModifyUser)
 	users.DELETE("/:username", DeleteUser)
+
+	// TODO: include within the user session in the future
+	r.POST("/files", UploadFile)
 
 	return r
 }
