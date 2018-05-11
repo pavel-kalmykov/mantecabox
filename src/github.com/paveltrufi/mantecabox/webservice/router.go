@@ -21,8 +21,13 @@ func Router(useJWT bool) *gin.Engine {
 	users.PUT("/:username", ModifyUser)
 	users.DELETE("/:username", DeleteUser)
 
-	// TODO: include within the user session in the future
-	r.POST("/files", UploadFile)
+
+	files := r.Group("/files")
+	if useJWT {
+		files.Use(AuthMiddleware.MiddlewareFunc())
+	}
+
+	files.POST("", UploadFile)
 
 	return r
 }

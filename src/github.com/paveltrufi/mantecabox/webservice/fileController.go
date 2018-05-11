@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"github.com/labstack/gommon/log"
+	"github.com/appleboy/gin-jwt"
 )
 func CreateDirIfNotExist(dir string) bool {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
@@ -29,12 +30,11 @@ func UploadFile(c *gin.Context) {
 		return
 	}
 
-	// Data stock TODO: remove when connecting with the user session
-	username := "user"
-	path := "./files/" + username + "/" + file.Filename
+	username := jwt.ExtractClaims(c)["id"].(string)
+	path := "./files/" + username + "/"
 
 	if CreateDirIfNotExist(path) {
-		if err := c.SaveUploadedFile(file, path); err != nil {
+		if err := c.SaveUploadedFile(file, path + file.Filename); err != nil {
 			c.String(http.StatusBadRequest, fmt.Sprintf("Upload file err: %s", err.Error()))
 			return
 		}
