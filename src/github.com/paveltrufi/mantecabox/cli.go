@@ -34,7 +34,7 @@ func signup() error {
 	fmt.Scanln(&credentials.Password)
 
 	strength := zxcvbn.PasswordStrength(credentials.Password, []string{credentials.Username}).Score
-	fmt.Printf("password's strength: %v (out of 4)\n", strength)
+	fmt.Printf("Password's strength: %v (out of 4).\n", strength)
 	if strength <= 2 {
 		return errors.New("password too guessable")
 	}
@@ -50,14 +50,21 @@ func signup() error {
 		SetResult(&result).
 		SetError(&serverError).
 		Post("/register")
+
 	if err != nil {
 		return err
 	}
-
-	fmt.Printf("Response: %v\n", response.String())
+	if serverError.Message != "" {
+		return errors.New(serverError.Message)
+	}
 	if response.StatusCode() != http.StatusCreated {
 		return errors.New("server did not sent HTTP 201 Created status")
 	}
+	if result.Username != credentials.Username {
+		return errors.New("username not registered properly")
+	}
+
+	fmt.Printf("User %v registered successfully!\n", result.Username)
 	return nil
 }
 
