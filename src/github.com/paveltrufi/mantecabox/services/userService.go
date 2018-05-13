@@ -50,7 +50,7 @@ func GetUser(username string) (models.User, error) {
 
 func RegisterUser(c *models.Credentials) (models.User, error) {
 	var user models.User
-	if err := validateCredentials(c); err != nil {
+	if err := ValidateCredentials(c); err != nil {
 		return user, err
 	}
 	decodedPassword, err := base64.URLEncoding.DecodeString(c.Password)
@@ -70,7 +70,7 @@ func RegisterUser(c *models.Credentials) (models.User, error) {
 
 func ModifyUser(username string, u *models.User) (models.User, error) {
 	var user models.User
-	if err := validateCredentials(&u.Credentials); err != nil {
+	if err := ValidateCredentials(&u.Credentials); err != nil {
 		return user, err
 	}
 	decodedPassword, err := base64.URLEncoding.DecodeString(u.Password)
@@ -116,7 +116,7 @@ func UserExists(username, password string) (string, bool) {
 	return username, true
 }
 
-func validateCredentials(c *models.Credentials) error {
+func ValidateCredentials(c *models.Credentials) error {
 	decodedPassword, err := base64.URLEncoding.DecodeString(c.Password)
 	if err != nil {
 		return err
