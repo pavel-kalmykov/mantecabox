@@ -13,13 +13,19 @@ import (
 	"time"
 
 	"github.com/alexflint/go-arg"
+	"github.com/gin-gonic/gin/json"
 	"github.com/go-http-utils/headers"
 	"github.com/hako/durafmt"
 	"github.com/howeyc/gopass"
 	"github.com/nbutton23/zxcvbn-go"
 	"github.com/paveltrufi/mantecabox/models"
 	"github.com/paveltrufi/mantecabox/services"
+	"github.com/zalando/go-keyring"
 	"gopkg.in/resty.v1"
+)
+
+const (
+	keyringServiceName = "mantecabox"
 )
 
 func init() {
@@ -99,8 +105,14 @@ func login(credentialsFunc func() models.Credentials) error {
 		return errors.New("server did not sent HTTP 200 OK status")
 	}
 
-	os.Setenv("MANTECABOX_TOKEN", result.Token)
-	os.Setenv("MANTECABOX_TOKEN_EXPIRE", result.Expire.String())
+	bytes, err := json.Marshal(result)
+	if err != nil {
+		return err
+	}
+	err = keyring.Set(keyringServiceName, credentials.Username, string(bytes))
+	if err != nil {
+		return err
+	}
 
 	fmt.Printf("Successfully logged for %v", durafmt.ParseShort(result.Expire.Sub(time.Now())))
 	return nil
