@@ -19,7 +19,7 @@ func (dao FilePgDao) GetAll() ([]models.File, error) {
   f.*,
   u.*
 FROM files f
-  JOIN users u ON f.owner = u.username
+  JOIN users u ON f.owner = u.email
 WHERE f.deleted_at IS NULL AND u.deleted_at IS NULL `)
 	if err != nil {
 		log.Info("Unable to execute FilePgDao.GetAll() query. Reason:", err)
@@ -34,7 +34,7 @@ WHERE f.deleted_at IS NULL AND u.deleted_at IS NULL `)
 			&file.GroupReadable, &file.GroupWritable, &file.GroupExecutable,
 			&file.OtherReadable, &file.OtherWritable, &file.OtherExecutable,
 			&file.PlatformCreation,
-			&file.Owner.CreatedAt, &file.Owner.UpdatedAt, &file.Owner.DeletedAt, &file.Owner.Username, &file.Owner.Password)
+			&file.Owner.CreatedAt, &file.Owner.UpdatedAt, &file.Owner.DeletedAt, &file.Owner.Email, &file.Owner.Password)
 		if err != nil {
 			log.Info("Unable to execute FilePgDao.GetAll() query. Reason:", err)
 			return nil, err
@@ -56,17 +56,17 @@ func (dao FilePgDao) GetByPk(id int64) (models.File, error) {
   f.*,
   u.*
 FROM files f
-  JOIN users u ON f.owner = u.username
+  JOIN users u ON f.owner = u.email
 WHERE f.deleted_at IS NULL AND u.deleted_at IS NULL AND f.id = $1`, id).Scan(
 		&file.Id, &file.CreatedAt, &file.UpdatedAt, &file.DeletedAt, &file.Name, &owner, &file.Group,
 		&file.UserReadable, &file.UserWritable, &file.UserExecutable,
 		&file.GroupReadable, &file.GroupWritable, &file.GroupExecutable,
 		&file.OtherReadable, &file.OtherWritable, &file.OtherExecutable,
 		&file.PlatformCreation,
-		&file.Owner.CreatedAt, &file.Owner.UpdatedAt, &file.Owner.DeletedAt, &file.Owner.Username, &file.Owner.Password)
+		&file.Owner.CreatedAt, &file.Owner.UpdatedAt, &file.Owner.DeletedAt, &file.Owner.Email, &file.Owner.Password)
 
 	if err != nil {
-		log.Debug("Unable to execute FilePgDao.GetByPk(username string) query. Reason:", err)
+		log.Debug("Unable to execute FilePgDao.GetByPk(email string) query. Reason:", err)
 	} else {
 		log.Debug("Retrieved file ", file)
 	}
@@ -79,13 +79,13 @@ func (dao FilePgDao) Create(file *models.File) (models.File, error) {
 
 	var createdFile models.File
 	err := db.QueryRow(`INSERT INTO files (name, owner, "group", user_readable, user_writable, user_executable, group_readable, group_writable, group_executable, other_readable, other_writable, other_executable, platform_creation)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *;`, file.Name, file.Owner.Username, file.Group,
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *;`, file.Name, file.Owner.Email, file.Group,
 		file.UserReadable, file.UserWritable, file.UserExecutable,
 		file.GroupReadable, file.GroupWritable, file.GroupExecutable,
 		file.OtherReadable, file.OtherWritable, file.OtherExecutable,
 		file.PlatformCreation,
 	).Scan(&createdFile.Id, &createdFile.CreatedAt, &createdFile.UpdatedAt, &createdFile.DeletedAt,
-		&createdFile.Name, &createdFile.Owner.Username, &createdFile.Group,
+		&createdFile.Name, &createdFile.Owner.Email, &createdFile.Group,
 		&createdFile.UserReadable, &createdFile.UserWritable, &createdFile.UserExecutable,
 		&createdFile.GroupReadable, &createdFile.GroupWritable, &createdFile.GroupExecutable,
 		&createdFile.OtherReadable, &createdFile.OtherWritable, &createdFile.OtherExecutable,
@@ -97,7 +97,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *;`, f
 		log.Debug("Created file", createdFile)
 	}
 
-	owner, err := UserPgDao{}.GetByPk(createdFile.Owner.Username)
+	owner, err := UserPgDao{}.GetByPk(createdFile.Owner.Email)
 	createdFile.Owner = owner
 
 	return createdFile, err
@@ -124,13 +124,13 @@ SET name            = $1,
   platform_creation = $13
 WHERE id = $14
 RETURNING *`,
-		file.Name, file.Owner.Username, file.Group,
+		file.Name, file.Owner.Email, file.Group,
 		file.UserReadable, file.UserWritable, file.UserExecutable,
 		file.GroupReadable, file.GroupWritable, file.GroupExecutable,
 		file.OtherReadable, file.OtherWritable, file.OtherExecutable,
 		file.PlatformCreation, id,
 	).Scan(&updatedFile.Id, &updatedFile.CreatedAt, &updatedFile.UpdatedAt, &updatedFile.DeletedAt,
-		&updatedFile.Name, &updatedFile.Owner.Username, &updatedFile.Group,
+		&updatedFile.Name, &updatedFile.Owner.Email, &updatedFile.Group,
 		&updatedFile.UserReadable, &updatedFile.UserWritable, &updatedFile.UserExecutable,
 		&updatedFile.GroupReadable, &updatedFile.GroupWritable, &updatedFile.GroupExecutable,
 		&updatedFile.OtherReadable, &updatedFile.OtherWritable, &updatedFile.OtherExecutable,
@@ -142,7 +142,7 @@ RETURNING *`,
 		log.Debug("Created file", updatedFile)
 	}
 
-	owner, err := UserPgDao{}.GetByPk(updatedFile.Owner.Username)
+	owner, err := UserPgDao{}.GetByPk(updatedFile.Owner.Email)
 	updatedFile.Owner = owner
 
 	return updatedFile, err

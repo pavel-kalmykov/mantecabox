@@ -11,16 +11,17 @@ import (
 	"github.com/paveltrufi/mantecabox/models"
 	"github.com/paveltrufi/mantecabox/utilities/aes"
 	"golang.org/x/crypto/bcrypt"
+	"github.com/badoux/checkmail"
+	"fmt"
 )
 
 const (
-	InvalidUsernameError = "invalid username (must be a valid nickname -all lowercases- with a length between 8 and 20 characters)"
+	InvalidEmailError    = "invalid email"
 	InvalidPasswordError = "password input is not SHA-512 hashed"
 )
 
 var (
 	sha512Regex   *regexp.Regexp
-	usernameRegex *regexp.Regexp
 	userDao       interfaces.UserDao
 )
 
@@ -33,11 +34,6 @@ func init() {
 		panic(err)
 	}
 	sha512Regex = sha512Compile
-	usernameCompile, err := regexp.Compile(`(?i)^[a-z\d](?:[a-z\d]|_([a-z\d])){6,20}$`)
-	if err != nil {
-		panic(err)
-	}
-	usernameRegex = usernameCompile
 }
 
 func GetUsers() ([]models.User, error) {
@@ -62,7 +58,7 @@ func RegisterUser(c *models.Credentials) (models.User, error) {
 		return user, err
 	}
 	user.Credentials = models.Credentials{
-		Username: c.Username,
+		Email:    c.Email,
 		Password: base64.URLEncoding.EncodeToString(aes.Encrypt(bcryptedPassword)),
 	}
 	return userDao.Create(&user)
@@ -85,7 +81,7 @@ func ModifyUser(username string, u *models.User) (models.User, error) {
 		TimeStamp:  u.TimeStamp,
 		SoftDelete: u.SoftDelete,
 		Credentials: models.Credentials{
-			Username: u.Username,
+			Email:    u.Email,
 			Password: base64.URLEncoding.EncodeToString(aes.Encrypt(bcryptedPassword)),
 		},
 	}
@@ -121,8 +117,8 @@ func ValidateCredentials(c *models.Credentials) error {
 	if err != nil {
 		return err
 	}
-	if matches := usernameRegex.MatchString(c.Username); !matches {
-		return errors.New(InvalidUsernameError)
+	if err := checkmail.ValidateFormat(c.Email); err != nil {
+		return errors.New(fmt.Sprintf("%v (%v)", InvalidEmailError, err))
 	}
 	if matches := sha512Regex.Match(decodedPassword); !matches {
 		return errors.New(InvalidPasswordError)

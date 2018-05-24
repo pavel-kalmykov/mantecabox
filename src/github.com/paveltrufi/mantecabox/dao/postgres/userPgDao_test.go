@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const testUserInsert = `INSERT INTO users (username, password) VALUES ('testuser1', 'testpassword1');`
+const testUserInsert = `INSERT INTO users (email, password) VALUES ('testuser1', 'testpassword1');`
 
 func TestMain(m *testing.M) {
 	utilities.StartDockerPostgresDb()
@@ -33,12 +33,12 @@ func TestUserPgDao_GetAll(t *testing.T) {
 	}{
 		{
 			"When the users table has some users, retrieve all them",
-			`INSERT INTO users(username, password)
+			`INSERT INTO users(email, password)
 VALUES  ('testuser1', 'testpassword1'),
 		('testuser2', 'testpassword2')`,
 			[]models.User{
-				{Credentials: models.Credentials{Username: "testuser1", Password: "testpassword1"}},
-				{Credentials: models.Credentials{Username: "testuser2", Password: "testpassword2"}},
+				{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}},
+				{Credentials: models.Credentials{Email: "testuser2", Password: "testpassword2"}},
 			},
 		},
 		{
@@ -48,11 +48,11 @@ VALUES  ('testuser1', 'testpassword1'),
 		},
 		{
 			"When the users table has some deleted users, don't retrieve them",
-			`INSERT INTO users(deleted_at, username, password)
+			`INSERT INTO users(deleted_at, email, password)
 VALUES  (NULL, 'testuser1', 'testpassword1'),
 		(NOW(), 'testuser2', 'testpassword2')`,
 			[]models.User{
-				{Credentials: models.Credentials{Username: "testuser1", Password: "testpassword1"}},
+				{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}},
 			},
 		},
 	}
@@ -85,7 +85,7 @@ VALUES  (NULL, 'testuser1', 'testpassword1'),
 
 func TestUserPgDao_GetByPk(t *testing.T) {
 	type args struct {
-		username string
+		email string
 	}
 	testCases := []struct {
 		name        string
@@ -97,19 +97,19 @@ func TestUserPgDao_GetByPk(t *testing.T) {
 		{
 			"When you ask for an existent user, retrieve it",
 			testUserInsert,
-			args{username: "testuser1"},
-			models.User{Credentials: models.Credentials{Username: "testuser1", Password: "testpassword1"}},
+			args{email: "testuser1"},
+			models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}},
 			false,
 		},
 		{
 			"When you ask for an non-existent user, return an empty user and an error",
 			"",
-			args{username: "nonexistentuser"},
+			args{email: "nonexistentuser"},
 			models.User{},
 			true,
 		},
 		{
-			"When you ask for a user with an empty username, return an empty user and an error",
+			"When you ask for a user with an empty email, return an empty user and an error",
 			"",
 			args{},
 			models.User{},
@@ -117,9 +117,9 @@ func TestUserPgDao_GetByPk(t *testing.T) {
 		},
 		{
 			"When you ask for a deleted user, return an empty user and an error",
-			`INSERT INTO users (deleted_at, username, password) 
+			`INSERT INTO users (deleted_at, email, password) 
 VALUES (NOW(), 'testuser1', 'testpassword1');`,
-			args{username: "testuser1"},
+			args{email: "testuser1"},
 			models.User{},
 			true,
 		},
@@ -133,14 +133,14 @@ VALUES (NOW(), 'testuser1', 'testpassword1');`,
 
 		t.Run(testCase.name, func(t *testing.T) {
 			dao := UserPgDao{}
-			got, err := dao.GetByPk(testCase.args.username)
+			got, err := dao.GetByPk(testCase.args.email)
 			requireUserEqualCheckingErrors(t, testCase.wantErr, err, testCase.want, got)
 		})
 	}
 }
 
 func TestUserPgDao_Create(t *testing.T) {
-	user := models.User{Credentials: models.Credentials{Username: "testuser1", Password: "testpassword1"}}
+	user := models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}
 	type args struct {
 		user *models.User
 	}
@@ -166,7 +166,7 @@ func TestUserPgDao_Create(t *testing.T) {
 			true,
 		},
 		{
-			"When you create a new user without username, return an empty user and an error",
+			"When you create a new user without email, return an empty user and an error",
 			"",
 			args{user: &models.User{Credentials: models.Credentials{Password: "testpassword1"}}},
 			models.User{},
@@ -175,7 +175,7 @@ func TestUserPgDao_Create(t *testing.T) {
 		{
 			"When you create a new user without password, return an empty user and an error",
 			"",
-			args{user: &models.User{Credentials: models.Credentials{Username: "testuser1"}}},
+			args{user: &models.User{Credentials: models.Credentials{Email: "testuser1"}}},
 			models.User{},
 			true,
 		},
@@ -195,9 +195,9 @@ func TestUserPgDao_Create(t *testing.T) {
 	}
 }
 func TestUserPgDao_Update(t *testing.T) {
-	user := models.User{Credentials: models.Credentials{Username: "testuser2", Password: "testpassword2"}}
+	user := models.User{Credentials: models.Credentials{Email: "testuser2", Password: "testpassword2"}}
 	type args struct {
-		username string
+		email string
 		user     *models.User
 	}
 	testCases := []struct {
@@ -210,35 +210,35 @@ func TestUserPgDao_Update(t *testing.T) {
 		{
 			"When you update an already inserted user, return the user updated",
 			testUserInsert,
-			args{username: "testuser1", user: &user},
+			args{email: "testuser1", user: &user},
 			user,
 			false,
 		},
 		{
 			"When you update a non-existent user, return an empty user and an error",
 			testUserInsert,
-			args{username: "testuser2", user: &user},
+			args{email: "testuser2", user: &user},
 			models.User{},
 			true,
 		},
 		{
-			"When you update a user with an empty username query, return an empty user and an error",
+			"When you update a user with an empty email query, return an empty user and an error",
 			testUserInsert,
-			args{username: "", user: &user},
+			args{email: "", user: &user},
 			models.User{},
 			true,
 		},
 		{
-			"When you update an inserted user without username, return an empty user and an error",
+			"When you update an inserted user without email, return an empty user and an error",
 			testUserInsert,
-			args{username: "testuser1", user: &models.User{Credentials: models.Credentials{Password: "testpassword2"}}},
+			args{email: "testuser1", user: &models.User{Credentials: models.Credentials{Password: "testpassword2"}}},
 			models.User{},
 			true,
 		},
 		{
 			"When you update an inserted user without password, return an empty user and an error",
 			testUserInsert,
-			args{username: "testuser1", user: &models.User{Credentials: models.Credentials{Username: "testuser2"}}},
+			args{email: "testuser1", user: &models.User{Credentials: models.Credentials{Email: "testuser2"}}},
 			models.User{},
 			true,
 		},
@@ -252,7 +252,7 @@ func TestUserPgDao_Update(t *testing.T) {
 
 		t.Run(testCase.name, func(t *testing.T) {
 			dao := UserPgDao{}
-			got, err := dao.Update(testCase.args.username, testCase.args.user)
+			got, err := dao.Update(testCase.args.email, testCase.args.user)
 			requireUserEqualCheckingErrors(t, testCase.wantErr, err, testCase.want, got)
 		})
 	}
@@ -260,7 +260,7 @@ func TestUserPgDao_Update(t *testing.T) {
 
 func TestUserPgDao_Delete(t *testing.T) {
 	type args struct {
-		username string
+		email string
 	}
 	testCases := []struct {
 		name        string
@@ -271,19 +271,19 @@ func TestUserPgDao_Delete(t *testing.T) {
 		{
 			"When you delete an inserted user, return no error",
 			testUserInsert,
-			args{username: "testuser1"},
+			args{email: "testuser1"},
 			false,
 		},
 		{
 			"When you delete a non-existent user, return an error",
 			testUserInsert,
-			args{username: "testuser2"},
+			args{email: "testuser2"},
 			true,
 		},
 		{
-			"When you update a user with an empty username query, return an error",
+			"When you update a user with an empty email query, return an error",
 			testUserInsert,
-			args{username: ""},
+			args{email: ""},
 			true,
 		},
 	}
@@ -296,7 +296,7 @@ func TestUserPgDao_Delete(t *testing.T) {
 
 		t.Run(testCase.name, func(t *testing.T) {
 			dao := UserPgDao{}
-			err := dao.Delete(testCase.args.username)
+			err := dao.Delete(testCase.args.email)
 			if testCase.wantErr {
 				require.Error(t, err)
 			} else {

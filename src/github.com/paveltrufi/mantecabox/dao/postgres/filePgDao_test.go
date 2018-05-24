@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	testUsersInsertQuery = `INSERT INTO users (username, password)
+	testUsersInsertQuery = `INSERT INTO users (email, password)
 VALUES ('testuser1', 'testpassword1'),
   ('testuser2', 'testpassword2');`
 
@@ -31,10 +31,10 @@ VALUES ('testfile1a', 'testuser1'),
   ('testfile2a', 'testuser2'),
   ('testfile2b', 'testuser2');`,
 			[]models.File{
-				{Name: "testfile1a", Owner: models.User{Credentials: models.Credentials{Username: "testuser1", Password: "testpassword1"}}, UserReadable: true, UserWritable: true, GroupReadable: true},
-				{Name: "testfile1b", Owner: models.User{Credentials: models.Credentials{Username: "testuser1", Password: "testpassword1"}}, UserReadable: true, UserWritable: true, GroupReadable: true},
-				{Name: "testfile2a", Owner: models.User{Credentials: models.Credentials{Username: "testuser2", Password: "testpassword2"}}, UserReadable: true, UserWritable: true, GroupReadable: true},
-				{Name: "testfile2b", Owner: models.User{Credentials: models.Credentials{Username: "testuser2", Password: "testpassword2"}}, UserReadable: true, UserWritable: true, GroupReadable: true},
+				{Name: "testfile1a", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}, UserReadable: true, UserWritable: true, GroupReadable: true},
+				{Name: "testfile1b", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}, UserReadable: true, UserWritable: true, GroupReadable: true},
+				{Name: "testfile2a", Owner: models.User{Credentials: models.Credentials{Email: "testuser2", Password: "testpassword2"}}, UserReadable: true, UserWritable: true, GroupReadable: true},
+				{Name: "testfile2b", Owner: models.User{Credentials: models.Credentials{Email: "testuser2", Password: "testpassword2"}}, UserReadable: true, UserWritable: true, GroupReadable: true},
 			},
 		},
 		{
@@ -50,8 +50,8 @@ VALUES (NULL, 'testfile1a', 'testuser1'),
   (NULL, 'testfile2a', 'testuser2'),
   (NOW(), 'testfile2b', 'testuser2');`,
 			[]models.File{
-				{Name: "testfile1a", Owner: models.User{Credentials: models.Credentials{Username: "testuser1", Password: "testpassword1"}}, UserReadable: true, UserWritable: true, GroupReadable: true},
-				{Name: "testfile2a", Owner: models.User{Credentials: models.Credentials{Username: "testuser2", Password: "testpassword2"}}, UserReadable: true, UserWritable: true, GroupReadable: true},
+				{Name: "testfile1a", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}, UserReadable: true, UserWritable: true, GroupReadable: true},
+				{Name: "testfile2a", Owner: models.User{Credentials: models.Credentials{Email: "testuser2", Password: "testpassword2"}}, UserReadable: true, UserWritable: true, GroupReadable: true},
 			},
 		},
 	}
@@ -108,7 +108,7 @@ func TestFilePgDao_GetByPk(t *testing.T) {
 			"When you ask for an existent file, retrieve it",
 			testFileInsertQuery,
 			args{},
-			models.File{Name: "testfile1a", Owner: models.User{Credentials: models.Credentials{Username: "testuser1", Password: "testpassword1"}}, UserReadable: true, UserWritable: true, GroupReadable: true},
+			models.File{Name: "testfile1a", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}, UserReadable: true, UserWritable: true, GroupReadable: true},
 			false,
 		},
 		{
@@ -149,7 +149,7 @@ func TestFilePgDao_GetByPk(t *testing.T) {
 }
 
 func TestFilePgDao_Create(t *testing.T) {
-	file := models.File{Name: "testfile", Owner: models.User{Credentials: models.Credentials{Username: "testuser1", Password: "testpassword1"}},
+	file := models.File{Name: "testfile", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}},
 		UserReadable: true, UserWritable: true, GroupReadable: true, GroupWritable: true}
 	fileWithoutName := file
 	fileWithoutName.Name = ""
@@ -204,7 +204,7 @@ func TestFilePgDao_Create(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	updatedFile := models.File{Name: "updatedfile", Owner: models.User{Credentials: models.Credentials{Username: "testuser1", Password: "testpassword1"}}}
+	updatedFile := models.File{Name: "updatedfile", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}}
 	updatedFileWithoutFilename := updatedFile
 	updatedFileWithoutFilename.Name = ""
 	updatedFileWithoutOwner := updatedFile

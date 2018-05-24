@@ -24,7 +24,7 @@ func (dao UserPgDao) GetAll() ([]models.User, error) {
 
 	for rows.Next() {
 		var user models.User
-		err := rows.Scan(&user.CreatedAt, &user.UpdatedAt, &user.DeletedAt, &user.Username, &user.Password)
+		err := rows.Scan(&user.CreatedAt, &user.UpdatedAt, &user.DeletedAt, &user.Email, &user.Password)
 		if err != nil {
 			log.Info("Unable to execute UserPgDao.GetAll() query. Reason:", err)
 			return nil, err
@@ -36,16 +36,16 @@ func (dao UserPgDao) GetAll() ([]models.User, error) {
 	return users, err
 }
 
-func (dao UserPgDao) GetByPk(username string) (models.User, error) {
+func (dao UserPgDao) GetByPk(email string) (models.User, error) {
 	user := models.User{}
 	db := GetPgDb()
 	defer db.Close()
 
-	err := db.QueryRow("SELECT * FROM users WHERE username = $1 AND deleted_at IS NULL", username).Scan(
-		&user.CreatedAt, &user.UpdatedAt, &user.DeletedAt, &user.Username, &user.Password)
+	err := db.QueryRow("SELECT * FROM users WHERE email = $1 AND deleted_at IS NULL", email).Scan(
+		&user.CreatedAt, &user.UpdatedAt, &user.DeletedAt, &user.Email, &user.Password)
 
 	if err != nil {
-		log.Debug("Unable to execute UserPgDao.GetByPk(username string) query. Reason:", err)
+		log.Debug("Unable to execute UserPgDao.GetByPk(email string) query. Reason:", err)
 	} else {
 		log.Debug("Retrieved user", user)
 	}
@@ -57,9 +57,9 @@ func (dao UserPgDao) Create(user *models.User) (models.User, error) {
 	defer db.Close()
 
 	var createdUser models.User
-	err := db.QueryRow("INSERT INTO users(username,password) VALUES($1,$2) RETURNING *;",
-		user.Username, user.Password).Scan(
-		&createdUser.CreatedAt, &createdUser.UpdatedAt, &createdUser.DeletedAt, &createdUser.Username,
+	err := db.QueryRow("INSERT INTO users(email,password) VALUES($1,$2) RETURNING *;",
+		user.Email, user.Password).Scan(
+		&createdUser.CreatedAt, &createdUser.UpdatedAt, &createdUser.DeletedAt, &createdUser.Email,
 		&createdUser.Password)
 
 	if err != nil {
@@ -70,31 +70,31 @@ func (dao UserPgDao) Create(user *models.User) (models.User, error) {
 	return createdUser, err
 }
 
-func (dao UserPgDao) Update(username string, user *models.User) (models.User, error) {
+func (dao UserPgDao) Update(email string, user *models.User) (models.User, error) {
 	db := GetPgDb()
 	defer db.Close()
 
 	var updatedUser models.User
-	err := db.QueryRow("UPDATE users SET username=$1, password=$2 WHERE username=$3 RETURNING *",
-		user.Username, user.Password, username).Scan(
-		&updatedUser.CreatedAt, &updatedUser.UpdatedAt, &updatedUser.DeletedAt, &updatedUser.Username,
+	err := db.QueryRow("UPDATE users SET email=$1, password=$2 WHERE email=$3 RETURNING *",
+		user.Email, user.Password, email).Scan(
+		&updatedUser.CreatedAt, &updatedUser.UpdatedAt, &updatedUser.DeletedAt, &updatedUser.Email,
 		&updatedUser.Password)
 
 	if err != nil {
-		log.Info("Unable to execute UserPgDao.Update(username string, user models.User) query. Reason:", err)
+		log.Info("Unable to execute UserPgDao.Update(email string, user models.User) query. Reason:", err)
 	} else {
 		log.Debug("Updated user", updatedUser)
 	}
 	return updatedUser, err
 }
 
-func (dao UserPgDao) Delete(username string) error {
+func (dao UserPgDao) Delete(email string) error {
 	db := GetPgDb()
 	defer db.Close()
 
-	result, err := db.Exec("DELETE FROM users WHERE username = $1", username)
+	result, err := db.Exec("DELETE FROM users WHERE email = $1", email)
 	if err != nil {
-		log.Info("Unable to execute UserPgDao.Delete(username string) query. Reason:", err)
+		log.Info("Unable to execute UserPgDao.Delete(email string) query. Reason:", err)
 	} else {
 		var rowsAffected int64
 		rowsAffected, err = result.RowsAffected()
@@ -108,9 +108,9 @@ func (dao UserPgDao) Delete(username string) error {
 				err = errors.New("more than one deleted")
 			}
 			if err != nil {
-				log.Debug("Unable to delete user with username \""+username+"\" correctly. Reason:", err)
+				log.Debug("Unable to delete user with email \""+email+"\" correctly. Reason:", err)
 			} else {
-				log.Debug("User with username \"" + username + "\" successfully deleted")
+				log.Debug("User with email \"" + email + "\" successfully deleted")
 			}
 		}
 	}

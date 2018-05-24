@@ -39,7 +39,7 @@ func signup(credentialsFunc func() models.Credentials) error {
 	fmt.Println("Welcome to mantecabox!")
 	credentials := credentialsFunc()
 
-	strength := zxcvbn.PasswordStrength(credentials.Password, []string{credentials.Username}).Score
+	strength := zxcvbn.PasswordStrength(credentials.Password, []string{credentials.Email}).Score
 	fmt.Printf("Password's strength: %v (out of 4).\n", strength)
 	if strength <= 2 {
 		return errors.New("password too guessable")
@@ -69,11 +69,11 @@ func signup(credentialsFunc func() models.Credentials) error {
 	if response.StatusCode() != http.StatusCreated {
 		return errors.New("server did not sent HTTP 201 Created status")
 	}
-	if result.Username != credentials.Username {
+	if result.Email != credentials.Email {
 		return errors.New("username not registered properly")
 	}
 
-	fmt.Printf("User %v registered successfully!\n", result.Username)
+	fmt.Printf("User %v registered successfully!\n", result.Email)
 	return nil
 }
 
@@ -109,7 +109,7 @@ func login(credentialsFunc func() models.Credentials) error {
 	if err != nil {
 		return err
 	}
-	err = keyring.Set(keyringServiceName, credentials.Username, string(bytes))
+	err = keyring.Set(keyringServiceName, credentials.Email, string(bytes))
 	if err != nil {
 		return err
 	}
@@ -126,8 +126,8 @@ func hashAndEncodePassword(password string) string {
 
 func readCredentials() models.Credentials {
 	var credentials models.Credentials
-	fmt.Print("Username: ")
-	fmt.Scanln(&credentials.Username)
+	fmt.Print("Email: ")
+	fmt.Scanln(&credentials.Email)
 	fmt.Print("Password: ")
 	pass, err := gopass.GetPasswdMasked()
 	if err != nil {
