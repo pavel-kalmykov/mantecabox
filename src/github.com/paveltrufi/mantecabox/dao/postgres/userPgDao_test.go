@@ -198,7 +198,7 @@ func TestUserPgDao_Update(t *testing.T) {
 	user := models.User{Credentials: models.Credentials{Email: "testuser2", Password: "testpassword2"}}
 	type args struct {
 		email string
-		user     *models.User
+		user  *models.User
 	}
 	testCases := []struct {
 		name        string

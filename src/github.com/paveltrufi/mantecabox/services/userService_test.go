@@ -18,10 +18,11 @@ import (
 )
 
 const (
-	testUserEmail = "hello@example.com"
-	testUser2Email = "hello2@example.com"
+	testUserEmail    = "hello@example.com"
+	testUser2Email   = "hello2@example.com"
 	updatedUserEmail = "updated@example.com"
 )
+
 var correctPassword = "testsecret"
 
 func init() {

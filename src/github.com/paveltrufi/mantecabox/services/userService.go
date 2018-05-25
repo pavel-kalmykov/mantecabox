@@ -3,16 +3,16 @@ package services
 import (
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"regexp"
 
+	"github.com/badoux/checkmail"
 	"github.com/paveltrufi/mantecabox/config"
 	"github.com/paveltrufi/mantecabox/dao/factory"
 	"github.com/paveltrufi/mantecabox/dao/interfaces"
 	"github.com/paveltrufi/mantecabox/models"
 	"github.com/paveltrufi/mantecabox/utilities/aes"
 	"golang.org/x/crypto/bcrypt"
-	"github.com/badoux/checkmail"
-	"fmt"
 )
 
 const (
@@ -21,8 +21,8 @@ const (
 )
 
 var (
-	sha512Regex   *regexp.Regexp
-	userDao       interfaces.UserDao
+	sha512Regex *regexp.Regexp
+	userDao     interfaces.UserDao
 )
 
 func init() {
