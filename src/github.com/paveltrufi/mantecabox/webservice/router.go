@@ -16,9 +16,9 @@ func Router(userJWT bool) *gin.Engine {
 		users.Use(AuthMiddleware.MiddlewareFunc())
 	}
 	users.GET("", GetUsers) // Useful?
-	users.GET("/:username", GetUser)
-	users.PUT("/:username", ModifyUser)
-	users.DELETE("/:username", DeleteUser)
+	users.GET("/:email", GetUser)
+	users.PUT("/:email", ModifyUser)
+	users.DELETE("/:email", DeleteUser)
 
 	return r
 }

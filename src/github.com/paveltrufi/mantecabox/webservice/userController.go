@@ -23,7 +23,7 @@ var AuthMiddleware = &jwt.GinJWTMiddleware{
 		return services.UserExists(username, password)
 	},
 	Authorizator: func(username string, c *gin.Context) bool {
-		userparam := c.Param("username")
+		userparam := c.Param("email")
 		return userparam == "" || userparam == username
 	},
 }
@@ -40,7 +40,7 @@ func GetUsers(c *gin.Context) {
 }
 
 func GetUser(c *gin.Context) {
-	username := c.Param("username")
+	username := c.Param("email")
 	user, err := services.GetUser(username)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -79,7 +79,7 @@ func ModifyUser(c *gin.Context) {
 		sendJsonError(c, http.StatusBadRequest, "Unable to parse JSON: "+err.Error())
 		return
 	}
-	username := c.Param("username")
+	username := c.Param("email")
 	user, err = services.ModifyUser(username, &user)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -95,7 +95,7 @@ func ModifyUser(c *gin.Context) {
 }
 
 func DeleteUser(c *gin.Context) {
-	username := c.Param("username")
+	username := c.Param("email")
 	err := services.DeleteUser(username)
 	if err != nil {
 		if err == sql.ErrNoRows {
