@@ -34,7 +34,7 @@ WHERE f.deleted_at IS NULL AND u.deleted_at IS NULL `)
 			&file.GroupReadable, &file.GroupWritable, &file.GroupExecutable,
 			&file.OtherReadable, &file.OtherWritable, &file.OtherExecutable,
 			&file.PlatformCreation,
-			&file.Owner.CreatedAt, &file.Owner.UpdatedAt, &file.Owner.DeletedAt, &file.Owner.Email, &file.Owner.Password)
+			&file.Owner.CreatedAt, &file.Owner.UpdatedAt, &file.Owner.DeletedAt, &file.Owner.Email, &file.Owner.Password, &file.Owner.TwoFactorAuth, &file.Owner.TwoFactorTime)
 		if err != nil {
 			log.Info("Unable to execute FilePgDao.GetAll() query. Reason:", err)
 			return nil, err
@@ -63,7 +63,7 @@ WHERE f.deleted_at IS NULL AND u.deleted_at IS NULL AND f.id = $1`, id).Scan(
 		&file.GroupReadable, &file.GroupWritable, &file.GroupExecutable,
 		&file.OtherReadable, &file.OtherWritable, &file.OtherExecutable,
 		&file.PlatformCreation,
-		&file.Owner.CreatedAt, &file.Owner.UpdatedAt, &file.Owner.DeletedAt, &file.Owner.Email, &file.Owner.Password)
+		&file.Owner.CreatedAt, &file.Owner.UpdatedAt, &file.Owner.DeletedAt, &file.Owner.Email, &file.Owner.Password, &file.Owner.TwoFactorAuth, &file.Owner.TwoFactorTime)
 
 	if err != nil {
 		log.Debug("Unable to execute FilePgDao.GetByPk(email string) query. Reason:", err)

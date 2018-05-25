@@ -258,6 +258,23 @@ func TestUserPgDao_Update(t *testing.T) {
 	}
 }
 
+func TestUserPgDao_Update2FA(t *testing.T) {
+	db := getDb(t)
+	defer db.Close()
+	cleanAndPopulateDb(db, testUserInsert, t)
+	updatedUser, err := UserPgDao{}.Update("testuser1", &models.User{
+		Credentials: models.Credentials{
+			Email:         "testuser1",
+			Password:      "tespass",
+			TwoFactorAuth: sql.NullString{Valid: true, String: "012345"},
+		},
+	})
+	require.NoError(t, err)
+	require.True(t, updatedUser.TwoFactorTime.Valid)
+	twoFactorTime := date.FromTime(updatedUser.TwoFactorTime.Time)
+	require.True(t, twoFactorTime.Within(date.SingleDay(twoFactorTime)))
+}
+
 func TestUserPgDao_Delete(t *testing.T) {
 	type args struct {
 		email string

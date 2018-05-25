@@ -24,7 +24,14 @@ func (dao UserPgDao) GetAll() ([]models.User, error) {
 
 	for rows.Next() {
 		var user models.User
-		err := rows.Scan(&user.CreatedAt, &user.UpdatedAt, &user.DeletedAt, &user.Email, &user.Password)
+		err := rows.Scan(
+			&user.CreatedAt,
+			&user.UpdatedAt,
+			&user.DeletedAt,
+			&user.Email,
+			&user.Password,
+			&user.TwoFactorAuth,
+			&user.TwoFactorTime)
 		if err != nil {
 			log.Info("Unable to execute UserPgDao.GetAll() query. Reason:", err)
 			return nil, err
@@ -42,7 +49,13 @@ func (dao UserPgDao) GetByPk(email string) (models.User, error) {
 	defer db.Close()
 
 	err := db.QueryRow("SELECT * FROM users WHERE email = $1 AND deleted_at IS NULL", email).Scan(
-		&user.CreatedAt, &user.UpdatedAt, &user.DeletedAt, &user.Email, &user.Password)
+		&user.CreatedAt,
+		&user.UpdatedAt,
+		&user.DeletedAt,
+		&user.Email,
+		&user.Password,
+		&user.TwoFactorAuth,
+		&user.TwoFactorTime)
 
 	if err != nil {
 		log.Debug("Unable to execute UserPgDao.GetByPk(email string) query. Reason:", err)
@@ -59,8 +72,13 @@ func (dao UserPgDao) Create(user *models.User) (models.User, error) {
 	var createdUser models.User
 	err := db.QueryRow("INSERT INTO users(email,password) VALUES($1,$2) RETURNING *;",
 		user.Email, user.Password).Scan(
-		&createdUser.CreatedAt, &createdUser.UpdatedAt, &createdUser.DeletedAt, &createdUser.Email,
-		&createdUser.Password)
+		&createdUser.CreatedAt,
+		&createdUser.UpdatedAt,
+		&createdUser.DeletedAt,
+		&createdUser.Email,
+		&createdUser.Password,
+		&createdUser.TwoFactorAuth,
+		&createdUser.TwoFactorTime)
 
 	if err != nil {
 		log.Info("Unable to execute UserPgDao.Create(user models.User) query. Reason:", err)
@@ -75,10 +93,15 @@ func (dao UserPgDao) Update(email string, user *models.User) (models.User, error
 	defer db.Close()
 
 	var updatedUser models.User
-	err := db.QueryRow("UPDATE users SET email=$1, password=$2 WHERE email=$3 RETURNING *",
-		user.Email, user.Password, email).Scan(
-		&updatedUser.CreatedAt, &updatedUser.UpdatedAt, &updatedUser.DeletedAt, &updatedUser.Email,
-		&updatedUser.Password)
+	err := db.QueryRow("UPDATE users SET email=$1, password=$2, two_factor_auth=$3 WHERE email=$4 RETURNING *",
+		user.Email, user.Password, user.TwoFactorAuth, email).Scan(
+		&updatedUser.CreatedAt,
+		&updatedUser.UpdatedAt,
+		&updatedUser.DeletedAt,
+		&updatedUser.Email,
+		&updatedUser.Password,
+		&updatedUser.TwoFactorAuth,
+		&updatedUser.TwoFactorTime)
 
 	if err != nil {
 		log.Info("Unable to execute UserPgDao.Update(email string, user models.User) query. Reason:", err)
