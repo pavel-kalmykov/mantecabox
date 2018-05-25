@@ -6,10 +6,11 @@ import (
 	"testing"
 
 	"github.com/aodin/date"
-	"github.com/lib/pq"
+	"github.com/gin-gonic/gin/json"
 	"github.com/paveltrufi/mantecabox/models"
 	"github.com/paveltrufi/mantecabox/utilities"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/guregu/null.v3"
 )
 
 const testUserInsert = `INSERT INTO users (email, password) VALUES ('testuser1', 'testpassword1');`
@@ -75,8 +76,8 @@ VALUES  (NULL, 'testuser1', 'testpassword1'),
 				updatedAtDate := date.FromTime(v.UpdatedAt.Time)
 				require.True(t, createdAtDate.Within(date.SingleDay(createdAtDate)))
 				require.True(t, updatedAtDate.Within(date.SingleDay(updatedAtDate)))
-				got[k].CreatedAt = pq.NullTime{}
-				got[k].UpdatedAt = pq.NullTime{}
+				got[k].CreatedAt = null.Time{}
+				got[k].UpdatedAt = null.Time{}
 			}
 			require.Equal(t, testCase.want, got)
 		})
@@ -266,7 +267,7 @@ func TestUserPgDao_Update2FA(t *testing.T) {
 		Credentials: models.Credentials{
 			Email:         "testuser1",
 			Password:      "tespass",
-			TwoFactorAuth: sql.NullString{Valid: true, String: "012345"},
+			TwoFactorAuth: null.String{NullString: sql.NullString{Valid: true, String: "012345"}},
 		},
 	})
 	require.NoError(t, err)
@@ -323,6 +324,13 @@ func TestUserPgDao_Delete(t *testing.T) {
 	}
 }
 
+func TestJSONParsing(t *testing.T) {
+	credentials := models.Credentials{}
+	bytes, err := json.Marshal(credentials)
+	require.NoError(t, err)
+	require.Equal(t, `{"email":"","password":"","two_factor_auth":null,"two_factor_time":null}`, string(bytes))
+}
+
 func getDb(t *testing.T) *sql.DB {
 	// Test preparation
 	db := GetPgDb()
@@ -354,8 +362,8 @@ func requireUserEqualCheckingErrors(t *testing.T, wantErr bool, err error, expec
 		updatedAtDate := date.FromTime(actual.UpdatedAt.Time)
 		require.True(t, createdAtDate.Within(date.SingleDay(createdAtDate)))
 		require.True(t, updatedAtDate.Within(date.SingleDay(updatedAtDate)))
-		actual.CreatedAt = pq.NullTime{}
-		actual.UpdatedAt = pq.NullTime{}
+		actual.CreatedAt = null.Time{}
+		actual.UpdatedAt = null.Time{}
 	}
 	require.Equal(t, expected, actual)
 }

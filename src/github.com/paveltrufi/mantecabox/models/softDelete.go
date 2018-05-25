@@ -1,7 +1,9 @@
 package models
 
-import "github.com/lib/pq"
+import (
+	"gopkg.in/guregu/null.v3"
+)
 
 type SoftDelete struct {
-	DeletedAt pq.NullTime `json:"deleted_at"`
+	DeletedAt null.Time `json:"deleted_at"`
 }

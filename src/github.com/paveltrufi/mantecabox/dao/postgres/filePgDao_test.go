@@ -4,9 +4,9 @@ import (
 	"testing"
 
 	"github.com/aodin/date"
-	"github.com/lib/pq"
 	"github.com/paveltrufi/mantecabox/models"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/guregu/null.v3"
 )
 
 const (
@@ -75,16 +75,16 @@ VALUES (NULL, 'testfile1a', 'testuser1'),
 				updatedAtDate := date.FromTime(v.UpdatedAt.Time)
 				require.True(t, createdAtDate.Within(date.SingleDay(createdAtDate)))
 				require.True(t, updatedAtDate.Within(date.SingleDay(updatedAtDate)))
-				got[k].CreatedAt = pq.NullTime{}
-				got[k].UpdatedAt = pq.NullTime{}
+				got[k].CreatedAt = null.Time{}
+				got[k].UpdatedAt = null.Time{}
 
 				// same for owners
 				createdAtDate = date.FromTime(v.Owner.CreatedAt.Time)
 				updatedAtDate = date.FromTime(v.Owner.UpdatedAt.Time)
 				require.True(t, createdAtDate.Within(date.SingleDay(createdAtDate)))
 				require.True(t, updatedAtDate.Within(date.SingleDay(updatedAtDate)))
-				got[k].Owner.CreatedAt = pq.NullTime{}
-				got[k].Owner.UpdatedAt = pq.NullTime{}
+				got[k].Owner.CreatedAt = null.Time{}
+				got[k].Owner.UpdatedAt = null.Time{}
 
 				got[k].Id = 0
 			}
@@ -334,16 +334,16 @@ func requireFileEqualCheckingErrors(t *testing.T, wantErr bool, err error, expec
 		updatedAtDate := date.FromTime(actual.UpdatedAt.Time)
 		require.True(t, createdAtDate.Within(date.SingleDay(createdAtDate)))
 		require.True(t, updatedAtDate.Within(date.SingleDay(updatedAtDate)))
-		actual.CreatedAt = pq.NullTime{}
-		actual.UpdatedAt = pq.NullTime{}
+		actual.CreatedAt = null.Time{}
+		actual.UpdatedAt = null.Time{}
 
 		// same for owners
 		createdAtDate = date.FromTime(actual.Owner.CreatedAt.Time)
 		updatedAtDate = date.FromTime(actual.Owner.UpdatedAt.Time)
 		require.True(t, createdAtDate.Within(date.SingleDay(createdAtDate)))
 		require.True(t, updatedAtDate.Within(date.SingleDay(updatedAtDate)))
-		actual.Owner.CreatedAt = pq.NullTime{}
-		actual.Owner.UpdatedAt = pq.NullTime{}
+		actual.Owner.CreatedAt = null.Time{}
+		actual.Owner.UpdatedAt = null.Time{}
 	}
 	require.Equal(t, expected, actual)
 }

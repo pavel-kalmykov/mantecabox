@@ -1,16 +1,14 @@
 package models
 
 import (
-	"database/sql"
-
-	"github.com/lib/pq"
+	"gopkg.in/guregu/null.v3"
 )
 
 type Credentials struct {
-	Email         string         `json:"email"`
-	Password      string         `json:"password"`
-	TwoFactorAuth sql.NullString `json:"two_factor_auth"`
-	TwoFactorTime pq.NullTime    `json:"two_factor_time"`
+	Email         string      `json:"email"`
+	Password      string      `json:"password"`
+	TwoFactorAuth null.String `json:"two_factor_auth"`
+	TwoFactorTime null.Time   `json:"two_factor_time"`
 }
 
 type User struct {
