@@ -26,6 +26,7 @@ var (
 	InvalidEmailError    = errors.New("invalid email")
 	InvalidPasswordError = errors.New("password input is not SHA-512 hashed")
 	Generating2FAError   = errors.New("unable to generate a 2FA secure code")
+	Empty2FACodeError    = errors.New("the 2FA secure code is empty")
 )
 
 func init() {
@@ -97,24 +98,25 @@ func DeleteUser(username string) error {
 	return userDao.Delete(username)
 }
 
-func UserExists(username, password string) (string, bool) {
-	user, err := userDao.GetByPk(username)
+func UserExists(email, password string) (models.User, bool) {
+	user, err := userDao.GetByPk(email)
 	if err != nil {
-		return username, false
+		user.Email = email
+		return user, false
 	}
 	decodedExpectedPassword, err := base64.URLEncoding.DecodeString(password)
 	if err != nil {
-		return username, false
+		return user, false
 	}
 	decodedActualPassword, err := base64.URLEncoding.DecodeString(user.Password)
 	if err != nil {
-		return username, false
+		return user, false
 	}
 	err = bcrypt.CompareHashAndPassword(aes.Decrypt(decodedActualPassword), decodedExpectedPassword)
 	if err != nil {
-		return username, false
+		return user, false
 	}
-	return username, true
+	return user, true
 }
 
 func Generate2FACodeAndSaveToUser(user *models.User) (models.User, error) {
@@ -128,6 +130,9 @@ func Generate2FACodeAndSaveToUser(user *models.User) (models.User, error) {
 }
 
 func Send2FAEmail(toEmail, code string) error {
+	if code == "" {
+		return Empty2FACodeError
+	}
 	if err := checkmail.ValidateHost(toEmail); err != nil {
 		return err
 	}
@@ -141,8 +146,8 @@ func Send2FAEmail(toEmail, code string) error {
 		DialAndSend(m)
 }
 
-func TwoFactorMatchesAndIsNotOutdated(code1, code2 string, expire time.Time) bool {
-	return code1 == code2 && time.Now().Sub(expire) < time.Minute*5
+func TwoFactorMatchesAndIsNotOutdated(expected, actual string, expire time.Time) bool {
+	return expected == actual && time.Now().Sub(expire) < time.Minute*5
 }
 
 func ValidateCredentials(c *models.Credentials) error {

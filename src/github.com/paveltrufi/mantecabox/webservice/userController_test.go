@@ -332,9 +332,14 @@ func TestJWTRouter(t *testing.T) {
 		{
 			name: "When you try to login with correct credentials, receive a new token",
 			test: func(t *testing.T) {
+				user, err := userDao.GetByPk(testUserEmail)
+				require.NoError(t, err)
 				r := gofight.New()
 				r.POST("/login").
 					SetDebug(true).
+					SetQuery(gofight.H{
+						"verification_code": user.TwoFactorAuth.ValueOrZero(),
+					}).
 					SetJSON(gofight.D{
 						"username": testUserEmail,
 						"password": correctPassword,
@@ -393,6 +398,27 @@ func TestJWTRouter(t *testing.T) {
 			},
 		},
 		{
+			name: "When you try to login without the 2FA verification code, deny it",
+			test: func(t *testing.T) {
+				r := gofight.New()
+				r.POST("/login").
+					SetDebug(true).
+					SetJSON(gofight.D{
+						"username": testUserEmail,
+						"password": correctPassword,
+					}).
+					Run(secureRouter, func(res gofight.HTTPResponse, req gofight.HTTPRequest) {
+						require.Equal(t, http.StatusUnauthorized, res.Code)
+						expected, err := json.Marshal(map[string]interface{}{
+							"code":    401,
+							"message": "incorrect Username, Password or Verification Code",
+						})
+						require.NoError(t, err)
+						require.JSONEq(t, string(expected), res.Body.String())
+					})
+			},
+		},
+		{
 			name: "When you try to access a protected route with a corrupt token, deny it",
 			test: func(t *testing.T) {
 				performActionWithToken(t, func(auth authResponse) {
@@ -442,10 +468,13 @@ func TestJWTRouter(t *testing.T) {
 	}
 	for _, tt := range tests {
 		cleanDb(db)
-		services.RegisterUser(&models.Credentials{
+		user, err := services.RegisterUser(&models.Credentials{
 			Email:    testUserEmail,
 			Password: correctPassword,
 		})
+		require.NoError(t, err)
+		_, err = services.Generate2FACodeAndSaveToUser(&user)
+		require.NoError(t, err)
 		t.Run(tt.name, tt.test)
 	}
 }
@@ -455,9 +484,14 @@ func performActionWithToken(t *testing.T, action func(response authResponse)) {
 }
 
 func performActionWithTokenAndCustomRouter(t *testing.T, customRouter *gin.Engine, action func(response authResponse)) {
+	user, err := userDao.GetByPk(testUserEmail)
+	require.NoError(t, err)
 	r := gofight.New()
 	r.POST("/login").
 		SetDebug(true).
+		SetQuery(gofight.H{
+			"verification_code": user.TwoFactorAuth.ValueOrZero(),
+		}).
 		SetJSON(gofight.D{
 			"username": testUserEmail,
 			"password": correctPassword,

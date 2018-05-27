@@ -328,32 +328,32 @@ func TestUserExists(t *testing.T) {
 		{
 			name: "When the user exists and password is correct, return true",
 			test: func(t *testing.T) {
-				username, exists := UserExists(testUserEmail, correctPassword)
-				require.Equal(t, testUserEmail, username)
+				user, exists := UserExists(testUserEmail, correctPassword)
+				require.Equal(t, testUserEmail, user.Email)
 				require.True(t, exists)
 			},
 		},
 		{
 			name: "When the user exists but password is not in base64, return false",
 			test: func(t *testing.T) {
-				username, exists := UserExists(testUserEmail, "testpassword")
-				require.Equal(t, testUserEmail, username)
+				user, exists := UserExists(testUserEmail, "testpassword")
+				require.Equal(t, testUserEmail, user.Email)
 				require.False(t, exists)
 			},
 		},
 		{
 			name: "When the user exists but password is incorrect, return false",
 			test: func(t *testing.T) {
-				username, exists := UserExists(testUserEmail, "MzFkYzhlYmMzZDhhN2U0ZjlhMzU4N2RkYWJkOGMxYmEwYjE5Yjc5ZjU2MWU1Yzk2MDhjYjQ4ZDRiMTRlOWFmMA==")
-				require.Equal(t, testUserEmail, username)
+				user, exists := UserExists(testUserEmail, "MzFkYzhlYmMzZDhhN2U0ZjlhMzU4N2RkYWJkOGMxYmEwYjE5Yjc5ZjU2MWU1Yzk2MDhjYjQ4ZDRiMTRlOWFmMA==")
+				require.Equal(t, testUserEmail, user.Email)
 				require.False(t, exists)
 			},
 		},
 		{
 			name: "When the user doesn't exist, return false",
 			test: func(t *testing.T) {
-				username, exists := UserExists("nonexistent", "")
-				require.Equal(t, "nonexistent", username)
+				user, exists := UserExists("nonexistent", "")
+				require.Equal(t, "nonexistent", user.Email)
 				require.False(t, exists)
 			},
 		},
@@ -456,15 +456,19 @@ func TestSend2FAEmail(t *testing.T) {
 		{
 			name: "When the 2FA is sent correctly, return no error",
 			test: func(t *testing.T) {
-				err := Send2FAEmail("mantecabox@gmail.com", "123456")
-				require.NoError(t, err)
+				require.NoError(t, Send2FAEmail("mantecabox@gmail.com", "123456"))
 			},
 		},
 		{
 			name: "When the email does not exist, return an error",
 			test: func(t *testing.T) {
-				err := Send2FAEmail("unexistent@error.ko", "123456")
-				require.Error(t, err)
+				require.Error(t, Send2FAEmail("unexistent@error.ko", "123456"))
+			},
+		},
+		{
+			name: "When the code is empty, return an error",
+			test: func(t *testing.T) {
+				require.Equal(t, Empty2FACodeError, Send2FAEmail("mantecabox@gmail.com", ""))
 			},
 		},
 	}
