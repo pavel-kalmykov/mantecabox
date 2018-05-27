@@ -16,7 +16,7 @@ func GetPgDb() *sql.DB {
 		return nil
 	}
 
-	connectionString := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=require", config.User, config.Password, config.Server, config.Port, config.Database)
+	connectionString := fmt.Sprintf("%s://%s:%s@%s:%s/%s?sslmode=require", config.Engine, config.User, config.Password, config.Server, config.Port, config.Database)
 	db, err := sql.Open("postgres", connectionString)
 	if err != nil {
 		log.Fatalln(err)
