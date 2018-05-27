@@ -117,6 +117,34 @@ func UserExists(username, password string) (string, bool) {
 	return username, true
 }
 
+func Generate2FACodeAndSaveToUser(user *models.User) (models.User, error) {
+	secureCode, err := rand.Int(rand.Reader, big.NewInt(999999)) // 6 digits max
+	if err != nil {
+		return *user, Generating2FAError
+	}
+	paddedSecureCode := fmt.Sprintf("%06d", secureCode)
+	user.TwoFactorAuth.SetValid(paddedSecureCode)
+	return userDao.Update(user.Email, user)
+}
+
+func Send2FAEmail(toEmail, code string) error {
+	if err := checkmail.ValidateHost(toEmail); err != nil {
+		return err
+	}
+	m := gomail.NewMessage()
+	m.SetHeader("From", "mantecabox@gmail.com")
+	m.SetHeader("To", toEmail)
+	m.SetHeader("Subject", "Mantecabox Security Code")
+	m.SetBody("text/html", fmt.Sprintf("Hello. Your security code is <b>%v</b>. It will expire in 5 minutes", code))
+	return gomail.
+		NewDialer("smtp.gmail.com", 587, "mantecabox@gmail.com", "ElPutoPavel").
+		DialAndSend(m)
+}
+
+func TwoFactorMatchesAndIsNotOutdated(code1, code2 string, expire time.Time) bool {
+	return code1 == code2 && time.Now().Sub(expire) < time.Minute*5
+}
+
 func ValidateCredentials(c *models.Credentials) error {
 	decodedPassword, err := base64.URLEncoding.DecodeString(c.Password)
 	if err != nil {

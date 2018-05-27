@@ -367,3 +367,108 @@ func TestUserExists(t *testing.T) {
 		t.Run(tt.name, tt.test)
 	}
 }
+
+func TestTwoFactorMatchesAndIsNotOutdated(t *testing.T) {
+	type args struct {
+		code1  string
+		code2  string
+		expire time.Time
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{
+			name: "When codes match and is not expired, return true",
+			args: args{code1: "123456", code2: "123456", expire: time.Now().Add(-time.Minute * 2)},
+			want: true,
+		},
+		{
+			name: "When codes match and is expired, return false",
+			args: args{code1: "123456", code2: "123456", expire: time.Now().Add(-time.Minute * 6)},
+			want: false,
+		},
+		{
+			name: "When codes don't match and is not expired, return false",
+			args: args{code1: "123456", code2: "123457", expire: time.Now().Add(-time.Minute * 2)},
+			want: false,
+		},
+		{
+			name: "When codes don't match and is expired, return false",
+			args: args{code1: "123456", code2: "123457", expire: time.Now().Add(-time.Minute * 6)},
+			want: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.want, TwoFactorMatchesAndIsNotOutdated(tt.args.code1, tt.args.code2, tt.args.expire))
+		})
+	}
+}
+
+func TestGenerate2FACodeAndSaveToUser(t *testing.T) {
+	db := getDb(t)
+	defer db.Close()
+	tests := []struct {
+		name string
+		test func(*testing.T)
+	}{
+		{
+			name: "When generating a 2FA code to an existent user, return the user with the code and its timestamp",
+			test: func(t *testing.T) {
+				createdUser, err := userDao.Create(&models.User{
+					Credentials: models.Credentials{Email: testUserEmail, Password: correctPassword},
+				})
+				require.NoError(t, err)
+				userWithCode, err := Generate2FACodeAndSaveToUser(&createdUser)
+				require.NoError(t, err)
+				twoFactorAuth := userWithCode.TwoFactorAuth.ValueOrZero()
+				twoFactorTime := userWithCode.TwoFactorTime.ValueOrZero()
+				require.NotEmpty(t, twoFactorAuth)
+				require.NotEmpty(t, twoFactorTime)
+				require.True(t, len(twoFactorAuth) == 6)
+				require.True(t, twoFactorTime.Sub(time.Now()) < time.Minute)
+			},
+		},
+		{
+			name: "When generating a 2FA code to an unexistent user, return an error",
+			test: func(t *testing.T) {
+				userWithCode, err := Generate2FACodeAndSaveToUser(&models.User{
+					Credentials: models.Credentials{Email: testUserEmail, Password: correctPassword},
+				})
+				require.Error(t, err)
+				require.Empty(t, userWithCode)
+			},
+		},
+	}
+	for _, tt := range tests {
+		cleanDb(db)
+		t.Run(tt.name, tt.test)
+	}
+}
+
+func TestSend2FAEmail(t *testing.T) {
+	tests := []struct {
+		name string
+		test func(*testing.T)
+	}{
+		{
+			name: "When the 2FA is sent correctly, return no error",
+			test: func(t *testing.T) {
+				err := Send2FAEmail("mantecabox@gmail.com", "123456")
+				require.NoError(t, err)
+			},
+		},
+		{
+			name: "When the email does not exist, return an error",
+			test: func(t *testing.T) {
+				err := Send2FAEmail("unexistent@error.ko", "123456")
+				require.Error(t, err)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, tt.test)
+	}
+}
