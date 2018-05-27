@@ -140,7 +140,7 @@ func Send2FAEmail(toEmail, code string) error {
 	m.SetHeader("From", "mantecabox@gmail.com")
 	m.SetHeader("To", toEmail)
 	m.SetHeader("Subject", "Mantecabox Security Code")
-	m.SetBody("text/html", fmt.Sprintf("Hello. Your security code is <b>%v</b>. It will expire in 5 minutes", code))
+	m.SetBody("text/html", fmt.Sprintf("Hello. Your security code is M-<b>%v</b>. It will expire in 5 minutes", code))
 	return gomail.
 		NewDialer("smtp.gmail.com", 587, "mantecabox@gmail.com", "ElPutoPavel").
 		DialAndSend(m)
