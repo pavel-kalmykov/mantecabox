@@ -130,7 +130,7 @@ func Generate2FAAndSendMail(c *gin.Context) {
 	}
 	foundUser, exists := services.UserExists(credentials.Email, credentials.Password)
 	if !exists {
-		sendJsonMsg(c, http.StatusNotFound, "Unable to find user: "+credentials.Email)
+		sendJsonMsg(c, http.StatusNotFound, "Wrong credentials for: "+credentials.Email+". Please check the username and password are correct!")
 		return
 	}
 	userWithCode, err := services.Generate2FACodeAndSaveToUser(&foundUser)
@@ -140,7 +140,7 @@ func Generate2FAAndSendMail(c *gin.Context) {
 	}
 	err = services.Send2FAEmail(userWithCode.Email, userWithCode.TwoFactorAuth.ValueOrZero())
 	if err != nil {
-		sendJsonMsg(c, http.StatusInternalServerError, "Error sending email:"+err.Error())
+		sendJsonMsg(c, http.StatusInternalServerError, "Error sending email: "+err.Error())
 		return
 	}
 	c.JSON(http.StatusOK, models.ServerError{

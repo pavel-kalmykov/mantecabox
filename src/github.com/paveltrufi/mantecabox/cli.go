@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/alexflint/go-arg"
+	"github.com/briandowns/spinner"
+	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/json"
 	"github.com/go-http-utils/headers"
 	"github.com/hako/durafmt"
@@ -87,10 +89,36 @@ func login(credentialsFunc func() models.Credentials) error {
 		return err
 	}
 
-	var result models.JwtResponse
+	var verificationResult models.ServerError
 	var serverError models.ServerError
+	s := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
+	s.Start()
 	response, err := resty.R().
 		SetBody(&credentials).
+		SetResult(&verificationResult).
+		SetError(&serverError).
+		Post("/2fa-verification")
+	s.Stop()
+
+	if err != nil {
+		return err
+	}
+	if serverError.Message != "" {
+		return errors.New(serverError.Message)
+	}
+	if response.StatusCode() != http.StatusOK {
+		return errors.New("server did not sent HTTP 200 OK status")
+	}
+
+	var twoFactorAuth string
+	fmt.Println(verificationResult.Message)
+	fmt.Print("Verification Code: ")
+	fmt.Scanln(&twoFactorAuth)
+
+	var result models.JwtResponse
+	response, err = resty.R().
+		SetBody(gin.H{"username": credentials.Email, "password": credentials.Password}).
+		SetQueryParam("verification_code", twoFactorAuth).
 		SetResult(&result).
 		SetError(&serverError).
 		Post("/login")

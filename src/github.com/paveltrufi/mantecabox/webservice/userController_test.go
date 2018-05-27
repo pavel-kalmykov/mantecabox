@@ -517,7 +517,7 @@ func TestGenerate2FAAndSendMail(t *testing.T) {
 					Run(secureRouter, func(res gofight.HTTPResponse, req gofight.HTTPRequest) {
 						require.Equal(t, http.StatusNotFound, res.Code)
 						expected, err := json.Marshal(map[string]interface{}{
-							"message": "Unable to find user: " + testUserEmail,
+							"message": "Wrong credentials for: " + testUserEmail + ". Please check the username and password are correct!",
 						})
 						require.NoError(t, err)
 						require.JSONEq(t, string(expected), res.Body.String())
