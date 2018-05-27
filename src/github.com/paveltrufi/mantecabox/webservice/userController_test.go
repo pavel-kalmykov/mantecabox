@@ -28,6 +28,7 @@ import (
 const (
 	correctPassword   = "MTg2NEU3NTRCN0QyOENDOTk0OURDQkI1MEVFM0FFNEY3NTdCRjc1MTAwRjBDMkMzRTM3RDUxQ0Y0QURDNEVDREU0NDhCODQ2ODdEQTg3QjY5RTJGNkRCNTQwRUVFODMwNDM1MjY0RDlGNDcwNzc5MTQ4MUYyNUQ0NUUyOEQ5MTA="
 	testUserEmail     = "testuser@example.com"
+	testUserRealEmail = "mantecabox@gmail.com"
 	modifiedUserEmail = "modifieduser@example.com"
 )
 
@@ -448,7 +449,7 @@ func TestJWTRouter(t *testing.T) {
 				performActionWithToken(t, func(auth authResponse) {
 					time.Sleep(time.Second)
 					r := gofight.New()
-					r.GET("/refresh_token").
+					r.GET("/refresh-token").
 						SetDebug(true).
 						SetHeader(gofight.H{
 							headers.Authorization: "Bearer " + auth.Token,
@@ -477,6 +478,65 @@ func TestJWTRouter(t *testing.T) {
 		require.NoError(t, err)
 		t.Run(tt.name, tt.test)
 	}
+}
+
+func TestGenerate2FAAndSendMail(t *testing.T) {
+	db := getDb(t)
+	defer db.Close()
+	tests := []subtest{
+		{
+			name: "When you generate a 2FA code to an existent user with a valid email, the code is generated and the mail sent",
+			test: func(t *testing.T) {
+				r := gofight.New()
+				r.POST("/2fa-verification").
+					SetDebug(true).
+					SetJSON(gofight.D{
+						"email":    testUserRealEmail,
+						"password": correctPassword,
+					}).
+					Run(secureRouter, func(res gofight.HTTPResponse, req gofight.HTTPRequest) {
+						require.Equal(t, http.StatusOK, res.Code)
+						expected, err := json.Marshal(map[string]interface{}{
+							"message": "Verification code sent correctly to " + testUserRealEmail + ". Check your inbox!",
+						})
+						require.NoError(t, err)
+						require.JSONEq(t, string(expected), res.Body.String())
+					})
+			},
+		},
+		{
+			name: "When you generate a 2FA code to an unexistent user with a valid email, send a not found error",
+			test: func(t *testing.T) {
+				r := gofight.New()
+				r.POST("/2fa-verification").
+					SetDebug(true).
+					SetJSON(gofight.D{
+						"email":    testUserEmail,
+						"password": correctPassword,
+					}).
+					Run(secureRouter, func(res gofight.HTTPResponse, req gofight.HTTPRequest) {
+						require.Equal(t, http.StatusNotFound, res.Code)
+						expected, err := json.Marshal(map[string]interface{}{
+							"message": "Unable to find user: " + testUserEmail,
+						})
+						require.NoError(t, err)
+						require.JSONEq(t, string(expected), res.Body.String())
+					})
+			},
+		},
+	}
+	for _, tt := range tests {
+		cleanDb(db)
+		user, err := services.RegisterUser(&models.Credentials{
+			Email:    testUserRealEmail,
+			Password: correctPassword,
+		})
+		require.NoError(t, err)
+		_, err = services.Generate2FACodeAndSaveToUser(&user)
+		require.NoError(t, err)
+		t.Run(tt.name, tt.test)
+	}
+
 }
 
 func performActionWithToken(t *testing.T, action func(response authResponse)) {

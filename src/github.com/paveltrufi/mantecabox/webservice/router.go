@@ -8,8 +8,9 @@ func Router(userJWT bool) *gin.Engine {
 	r := gin.Default()
 
 	r.POST("/register", RegisterUser)
+	r.POST("/2fa-verification", Generate2FAAndSendMail)
 	r.POST("/login", AuthMiddleware.LoginHandler)
-	r.GET("/refresh_token", AuthMiddleware.RefreshHandler)
+	r.GET("/refresh-token", AuthMiddleware.RefreshHandler)
 
 	users := r.Group("/users")
 	if userJWT {
