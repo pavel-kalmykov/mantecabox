@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/paveltrufi/mantecabox/dao/postgres"
 	"github.com/paveltrufi/mantecabox/models"
@@ -33,8 +34,6 @@ func init() {
 
 func TestMain(m *testing.M) {
 	utilities.StartDockerPostgresDb()
-	// os.Setenv("MANTECABOX_CONFIG_FILE", "configuration.test.json")
-	// it must be initialized from the run script configuration
 
 	code := m.Run()
 
@@ -133,7 +132,7 @@ func TestRegisterUser(t *testing.T) {
 			func(t *testing.T) {
 				actualUser, err := RegisterUser(&models.Credentials{})
 				require.Error(t, err)
-				require.True(t, strings.HasPrefix(err.Error(), InvalidEmailError))
+				require.True(t, strings.HasPrefix(err.Error(), InvalidEmailError.Error()))
 				require.Equal(t, models.User{}, actualUser)
 			},
 		},
@@ -154,7 +153,7 @@ func TestRegisterUser(t *testing.T) {
 					Password: "bWFudGVjYWJveA==",
 				})
 				require.Error(t, err)
-				require.Equal(t, InvalidPasswordError, err.Error())
+				require.Equal(t, InvalidPasswordError, err)
 				require.Equal(t, models.User{}, actualUser)
 			},
 		},
@@ -167,7 +166,7 @@ func TestRegisterUser(t *testing.T) {
 					Password: "MzFkYzhlYmMzZDhhN2U0ZjlhMzU4N2RkYWJkOGMxYmEwYjE5Yjc5ZjU2MWU1Yzk2MDhjYjQ4ZDRiMTRlOWFmMA==",
 				})
 				require.Error(t, err)
-				require.Equal(t, InvalidPasswordError, err.Error())
+				require.Equal(t, InvalidPasswordError, err)
 				require.Equal(t, models.User{}, actualUser)
 			},
 		},
@@ -212,7 +211,7 @@ func TestModifyUser(t *testing.T) {
 			func(t *testing.T) {
 				actualUser, err := ModifyUser(testUserEmail, &models.User{})
 				require.Error(t, err)
-				require.True(t, strings.HasPrefix(err.Error(), InvalidEmailError))
+				require.True(t, strings.HasPrefix(err.Error(), InvalidEmailError.Error()))
 				require.Equal(t, models.User{}, actualUser)
 			},
 		},
@@ -239,7 +238,7 @@ func TestModifyUser(t *testing.T) {
 					},
 				})
 				require.Error(t, err)
-				require.Equal(t, InvalidPasswordError, err.Error())
+				require.Equal(t, InvalidPasswordError, err)
 				require.Equal(t, models.User{}, actualUser)
 			},
 		},
@@ -252,7 +251,7 @@ func TestModifyUser(t *testing.T) {
 					Password: "MzFkYzhlYmMzZDhhN2U0ZjlhMzU4N2RkYWJkOGMxYmEwYjE5Yjc5ZjU2MWU1Yzk2MDhjYjQ4ZDRiMTRlOWFmMA==",
 				})
 				require.Error(t, err)
-				require.Equal(t, InvalidPasswordError, err.Error())
+				require.Equal(t, InvalidPasswordError, err)
 				require.Equal(t, models.User{}, actualUser)
 			},
 		},

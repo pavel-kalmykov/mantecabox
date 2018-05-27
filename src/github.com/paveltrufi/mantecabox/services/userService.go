@@ -1,10 +1,13 @@
 package services
 
 import (
+	"crypto/rand"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"math/big"
 	"regexp"
+	"time"
 
 	"github.com/badoux/checkmail"
 	"github.com/paveltrufi/mantecabox/config"
@@ -13,20 +16,22 @@ import (
 	"github.com/paveltrufi/mantecabox/models"
 	"github.com/paveltrufi/mantecabox/utilities/aes"
 	"golang.org/x/crypto/bcrypt"
-)
-
-const (
-	InvalidEmailError    = "invalid email"
-	InvalidPasswordError = "password input is not SHA-512 hashed"
+	"gopkg.in/gomail.v2"
 )
 
 var (
-	sha512Regex *regexp.Regexp
-	userDao     interfaces.UserDao
+	sha512Regex          *regexp.Regexp
+	userDao              interfaces.UserDao
+	configuration        models.Configuration
+	InvalidEmailError    = errors.New("invalid email")
+	InvalidPasswordError = errors.New("password input is not SHA-512 hashed")
+	Generating2FAError   = errors.New("unable to generate a 2FA secure code")
 )
 
 func init() {
-	dao := factory.UserDaoFactory(config.GetServerConf().Engine)
+	conf := config.GetServerConf()
+	configuration = conf
+	dao := factory.UserDaoFactory(configuration.Engine)
 	userDao = dao
 
 	sha512Compile, err := regexp.Compile(`^[A-Fa-f0-9]{128}$`)
@@ -121,7 +126,7 @@ func ValidateCredentials(c *models.Credentials) error {
 		return errors.New(fmt.Sprintf("%v (%v)", InvalidEmailError, err))
 	}
 	if matches := sha512Regex.Match(decodedPassword); !matches {
-		return errors.New(InvalidPasswordError)
+		return InvalidPasswordError
 	}
 	return nil
 }

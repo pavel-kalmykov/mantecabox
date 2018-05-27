@@ -53,8 +53,6 @@ type authResponse struct {
 
 func TestMain(m *testing.M) {
 	utilities.StartDockerPostgresDb()
-	// os.Setenv("MANTECABOX_CONFIG_FILE", "configuration.test.json")
-	// it must be initialized from the run script configuration
 
 	code := m.Run()
 
@@ -178,7 +176,7 @@ func TestRegisterUser(t *testing.T) {
 					Run(router, func(res gofight.HTTPResponse, req gofight.HTTPRequest) {
 						require.Equal(t, http.StatusBadRequest, res.Code)
 						expected, err := json.Marshal(map[string]string{
-							"message": "Unable to register user: " + services.InvalidPasswordError,
+							"message": "Unable to register user: " + services.InvalidPasswordError.Error(),
 						})
 						require.NoError(t, err)
 						require.JSONEq(t, string(expected), res.Body.String())
@@ -257,7 +255,7 @@ func TestModifyUser(t *testing.T) {
 					Run(router, func(res gofight.HTTPResponse, req gofight.HTTPRequest) {
 						require.Equal(t, http.StatusBadRequest, res.Code)
 						expected, err := json.Marshal(map[string]string{
-							"message": "Unable to modify user: " + services.InvalidPasswordError,
+							"message": "Unable to modify user: " + services.InvalidPasswordError.Error(),
 						})
 						require.NoError(t, err)
 						require.JSONEq(t, string(expected), res.Body.String())
