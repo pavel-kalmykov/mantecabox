@@ -3,6 +3,7 @@ package postgres
 import (
 	"errors"
 
+	"mantecabox/database"
 	"mantecabox/models"
 
 	log "github.com/alexrudd/go-logger"
@@ -13,7 +14,7 @@ type FilePgDao struct {
 
 func (dao FilePgDao) GetAll() ([]models.File, error) {
 	files := make([]models.File, 0)
-	db := GetPgDb()
+	db, err := database.GetPgDb()
 	defer db.Close()
 
 	rows, err := db.Query(`SELECT
@@ -50,10 +51,13 @@ WHERE f.deleted_at IS NULL AND u.deleted_at IS NULL `)
 func (dao FilePgDao) GetByPk(id int64) (models.File, error) {
 	file := models.File{}
 	owner := ""
-	db := GetPgDb()
+	db, err := database.GetPgDb()
+	if err != nil {
+		log.Fatal("Unable to connnect with database")
+	}
 	defer db.Close()
 
-	err := db.QueryRow(`SELECT
+	err = db.QueryRow(`SELECT
   f.*,
   u.*
 FROM files f
@@ -75,11 +79,14 @@ WHERE f.deleted_at IS NULL AND u.deleted_at IS NULL AND f.id = $1`, id).Scan(
 }
 
 func (dao FilePgDao) Create(file *models.File) (models.File, error) {
-	db := GetPgDb()
+	db, err := database.GetPgDb()
+	if err != nil {
+		log.Fatal("Unable to connnect with database")
+	}
 	defer db.Close()
 
 	var createdFile models.File
-	err := db.QueryRow(`INSERT INTO files (name, owner, "group", user_readable, user_writable, user_executable, group_readable, group_writable, group_executable, other_readable, other_writable, other_executable, platform_creation)
+	err = db.QueryRow(`INSERT INTO files (name, owner, "group", user_readable, user_writable, user_executable, group_readable, group_writable, group_executable, other_readable, other_writable, other_executable, platform_creation)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *;`, file.Name, file.Owner.Email, file.Group,
 		file.UserReadable, file.UserWritable, file.UserExecutable,
 		file.GroupReadable, file.GroupWritable, file.GroupExecutable,
@@ -105,11 +112,14 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *;`, f
 }
 
 func Update(id int64, file *models.File) (models.File, error) {
-	db := GetPgDb()
+	db, err := database.GetPgDb()
+	if err != nil {
+		log.Fatal("Unable to connnect with database")
+	}
 	defer db.Close()
 
 	var updatedFile models.File
-	err := db.QueryRow(`UPDATE files
+	err = db.QueryRow(`UPDATE files
 SET name            = $1,
   owner             = $2,
   "group"           = $3,
@@ -150,7 +160,7 @@ RETURNING *`,
 }
 
 func Delete(id int64) error {
-	db := GetPgDb()
+	db, err := database.GetPgDb()
 	defer db.Close()
 
 	result, err := db.Exec("DELETE FROM files WHERE id = $1", id)

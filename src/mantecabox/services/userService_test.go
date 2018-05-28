@@ -10,11 +10,12 @@ import (
 	"testing"
 	"time"
 
-	"mantecabox/dao/postgres"
+	"mantecabox/database"
 	"mantecabox/models"
 	"mantecabox/utilities"
 	"mantecabox/utilities/aes"
 
+	"github.com/labstack/gommon/log"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -38,7 +39,10 @@ func TestMain(m *testing.M) {
 
 	code := m.Run()
 
-	db := postgres.GetPgDb()
+	db, err := database.GetPgDb()
+	if err != nil {
+		log.Fatal("Unable to connnect with database")
+	}
 	cleanDb(db)
 	os.Exit(code)
 }
@@ -281,7 +285,10 @@ func TestModifyUser(t *testing.T) {
 
 func getDb(t *testing.T) *sql.DB {
 	// Test preparation
-	db := postgres.GetPgDb()
+	db, err := database.GetPgDb()
+	if err != nil {
+		log.Fatal("Unable to connnect with database")
+	}
 	require.NotNil(t, db)
 	return db
 }

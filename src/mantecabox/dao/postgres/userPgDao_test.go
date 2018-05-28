@@ -5,11 +5,13 @@ import (
 	"os"
 	"testing"
 
+	"mantecabox/database"
 	"mantecabox/models"
 	"mantecabox/utilities"
 
 	"github.com/aodin/date"
 	"github.com/gin-gonic/gin/json"
+	"github.com/labstack/gommon/log"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/guregu/null.v3"
 )
@@ -22,7 +24,10 @@ func TestMain(m *testing.M) {
 
 	code := m.Run()
 
-	db := GetPgDb()
+	db, err := database.GetPgDb()
+	if err != nil {
+		log.Fatal("Unable to connnect with database")
+	}
 	cleanDb(db)
 	os.Exit(code)
 }
@@ -334,7 +339,10 @@ func TestJSONParsing(t *testing.T) {
 
 func getDb(t *testing.T) *sql.DB {
 	// Test preparation
-	db := GetPgDb()
+	db, err := database.GetPgDb()
+	if err != nil {
+		log.Fatal("Unable to connnect with database")
+	}
 	require.NotNil(t, db)
 	return db
 }

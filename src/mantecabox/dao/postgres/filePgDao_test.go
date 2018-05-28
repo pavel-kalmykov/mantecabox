@@ -3,9 +3,11 @@ package postgres
 import (
 	"testing"
 
+	"mantecabox/database"
 	"mantecabox/models"
 
 	"github.com/aodin/date"
+	"github.com/labstack/gommon/log"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/guregu/null.v3"
 )
@@ -190,7 +192,10 @@ func TestFilePgDao_Create(t *testing.T) {
 		},
 	}
 
-	db := GetPgDb()
+	db, err := database.GetPgDb()
+	if err != nil {
+		log.Fatal("Unable to connnect with database")
+	}
 	defer db.Close()
 
 	for _, testCase := range testCases {
@@ -256,7 +261,10 @@ func TestUpdate(t *testing.T) {
 		},
 	}
 
-	db := GetPgDb()
+	db, err := database.GetPgDb()
+	if err != nil {
+		log.Fatal("Unable to connnect with database")
+	}
 	defer db.Close()
 
 	for _, testCase := range testCases {
