@@ -25,7 +25,12 @@ import (
 )
 
 // base64(sha512(password))
-const correctPassword = "MTg2NEU3NTRCN0QyOENDOTk0OURDQkI1MEVFM0FFNEY3NTdCRjc1MTAwRjBDMkMzRTM3RDUxQ0Y0QURDNEVDREU0NDhCODQ2ODdEQTg3QjY5RTJGNkRCNTQwRUVFODMwNDM1MjY0RDlGNDcwNzc5MTQ4MUYyNUQ0NUUyOEQ5MTA="
+const (
+	correctPassword   = "MTg2NEU3NTRCN0QyOENDOTk0OURDQkI1MEVFM0FFNEY3NTdCRjc1MTAwRjBDMkMzRTM3RDUxQ0Y0QURDNEVDREU0NDhCODQ2ODdEQTg3QjY5RTJGNkRCNTQwRUVFODMwNDM1MjY0RDlGNDcwNzc5MTQ4MUYyNUQ0NUUyOEQ5MTA="
+	testUserEmail     = "testuser@example.com"
+	testUserRealEmail = "mantecabox@gmail.com"
+	modifiedUserEmail = "modifieduser@example.com"
+)
 
 var (
 	userDao         = factory.UserDaoFactory("postgres")
@@ -49,8 +54,6 @@ type authResponse struct {
 
 func TestMain(m *testing.M) {
 	utilities.StartDockerPostgresDb()
-	// os.Setenv("MANTECABOX_CONFIG_FILE", "configuration.test.json")
-	// it must be initialized from the run script configuration
 
 	code := m.Run()
 
@@ -66,13 +69,13 @@ func TestGetUsers(t *testing.T) {
 		{
 			name: "When there is at least one user, you retrieve it in an array",
 			test: func(t *testing.T) {
-				userDao.Create(&models.User{Credentials: models.Credentials{Username: "testuser", Password: "testpassword"}})
+				userDao.Create(&models.User{Credentials: models.Credentials{Email: testUserEmail, Password: "testpassword"}})
 				r := gofight.New()
 				r.GET("/users").
 					SetDebug(true).
 					Run(router, func(res gofight.HTTPResponse, req gofight.HTTPRequest) {
 						require.Equal(t, http.StatusOK, res.Code)
-						expected, err := json.Marshal([]map[string]string{{"username": "testuser"}})
+						expected, err := json.Marshal([]map[string]string{{"email": testUserEmail}})
 						require.NoError(t, err)
 						require.JSONEq(t, string(expected), res.Body.String())
 					})
@@ -107,11 +110,11 @@ func TestGetUser(t *testing.T) {
 			name: "When you pass an existent user, retrieve it",
 			test: func(t *testing.T) {
 				r := gofight.New()
-				r.GET("/users/testuser").
+				r.GET("/users/"+testUserEmail).
 					SetDebug(true).
 					Run(router, func(res gofight.HTTPResponse, req gofight.HTTPRequest) {
 						require.Equal(t, http.StatusOK, res.Code)
-						expected, err := json.Marshal(map[string]string{"username": "testuser"})
+						expected, err := json.Marshal(map[string]string{"email": testUserEmail})
 						require.NoError(t, err)
 						require.JSONEq(t, string(expected), res.Body.String())
 					})
@@ -134,7 +137,7 @@ func TestGetUser(t *testing.T) {
 	}
 	for _, tt := range tests {
 		cleanDb(db)
-		userDao.Create(&models.User{Credentials: models.Credentials{Username: "testuser", Password: "testpassword"}})
+		userDao.Create(&models.User{Credentials: models.Credentials{Email: testUserEmail, Password: "testpassword"}})
 		t.Run(tt.name, tt.test)
 	}
 }
@@ -150,12 +153,12 @@ func TestRegisterUser(t *testing.T) {
 				r.POST("/register").
 					SetDebug(true).
 					SetJSON(gofight.D{
-						"username": "testuser",
+						"email":    testUserEmail,
 						"password": correctPassword,
 					}).
 					Run(router, func(res gofight.HTTPResponse, req gofight.HTTPRequest) {
 						require.Equal(t, http.StatusCreated, res.Code)
-						expected, err := json.Marshal(map[string]string{"username": "testuser"})
+						expected, err := json.Marshal(map[string]string{"email": testUserEmail})
 						require.NoError(t, err)
 						require.JSONEq(t, string(expected), res.Body.String())
 					})
@@ -168,13 +171,13 @@ func TestRegisterUser(t *testing.T) {
 				r.POST("/register").
 					SetDebug(true).
 					SetJSON(gofight.D{
-						"username": "testuser",
+						"email":    testUserEmail,
 						"password": "bWFudGVjYWJveA==",
 					}).
 					Run(router, func(res gofight.HTTPResponse, req gofight.HTTPRequest) {
 						require.Equal(t, http.StatusBadRequest, res.Code)
 						expected, err := json.Marshal(map[string]string{
-							"message": "Unable to register user: " + services.InvalidPasswordError,
+							"message": "Unable to register user: " + services.InvalidPasswordError.Error(),
 						})
 						require.NoError(t, err)
 						require.JSONEq(t, string(expected), res.Body.String())
@@ -211,15 +214,15 @@ func TestModifyUser(t *testing.T) {
 			name: "When you modify an existent user with proper data, modify it",
 			test: func(t *testing.T) {
 				r := gofight.New()
-				r.PUT("/users/testuser").
+				r.PUT("/users/"+testUserEmail).
 					SetJSON(gofight.D{
-						"username": "modifiedUser",
+						"email":    modifiedUserEmail,
 						"password": correctPassword,
 					}).
 					Run(router, func(res gofight.HTTPResponse, req gofight.HTTPRequest) {
 						require.Equal(t, http.StatusCreated, res.Code)
 						expected, err := json.Marshal(map[string]string{
-							"username": "modifiedUser",
+							"email": modifiedUserEmail,
 						})
 						require.NoError(t, err)
 						require.JSONEq(t, string(expected), res.Body.String())
@@ -232,7 +235,7 @@ func TestModifyUser(t *testing.T) {
 				r := gofight.New()
 				r.PUT("/users/nonexistent").
 					SetJSON(gofight.D{
-						"username": "modifiedUser",
+						"email":    modifiedUserEmail,
 						"password": correctPassword,
 					}).
 					Run(router, func(res gofight.HTTPResponse, req gofight.HTTPRequest) {
@@ -247,13 +250,13 @@ func TestModifyUser(t *testing.T) {
 				r.PUT("/users/testuser").
 					SetDebug(true).
 					SetJSON(gofight.D{
-						"username": "testuser",
+						"email":    testUserEmail,
 						"password": "bWFudGVjYWJveA==",
 					}).
 					Run(router, func(res gofight.HTTPResponse, req gofight.HTTPRequest) {
 						require.Equal(t, http.StatusBadRequest, res.Code)
 						expected, err := json.Marshal(map[string]string{
-							"message": "Unable to modify user: " + services.InvalidPasswordError,
+							"message": "Unable to modify user: " + services.InvalidPasswordError.Error(),
 						})
 						require.NoError(t, err)
 						require.JSONEq(t, string(expected), res.Body.String())
@@ -278,7 +281,7 @@ func TestModifyUser(t *testing.T) {
 	}
 	for _, tt := range tests {
 		cleanDb(db)
-		userDao.Create(&models.User{Credentials: models.Credentials{Username: "testuser", Password: "testpassword"}})
+		userDao.Create(&models.User{Credentials: models.Credentials{Email: testUserEmail, Password: "testpassword"}})
 		t.Run(tt.name, tt.test)
 	}
 }
@@ -291,7 +294,7 @@ func TestDeleteUser(t *testing.T) {
 			name: "When you delete an existent, it gets deleted",
 			test: func(t *testing.T) {
 				r := gofight.New()
-				r.DELETE("/users/testuser").
+				r.DELETE("/users/"+testUserEmail).
 					SetDebug(true).
 					Run(router, func(res gofight.HTTPResponse, req gofight.HTTPRequest) {
 						require.Equal(t, http.StatusNoContent, res.Code)
@@ -318,7 +321,7 @@ func TestDeleteUser(t *testing.T) {
 	}
 	for _, tt := range tests {
 		cleanDb(db)
-		userDao.Create(&models.User{Credentials: models.Credentials{Username: "testuser", Password: "testpassword"}})
+		userDao.Create(&models.User{Credentials: models.Credentials{Email: testUserEmail, Password: "testpassword"}})
 		t.Run(tt.name, tt.test)
 	}
 }
@@ -330,11 +333,16 @@ func TestJWTRouter(t *testing.T) {
 		{
 			name: "When you try to login with correct credentials, receive a new token",
 			test: func(t *testing.T) {
+				user, err := userDao.GetByPk(testUserEmail)
+				require.NoError(t, err)
 				r := gofight.New()
 				r.POST("/login").
 					SetDebug(true).
+					SetQuery(gofight.H{
+						"verification_code": user.TwoFactorAuth.ValueOrZero(),
+					}).
 					SetJSON(gofight.D{
-						"username": "testuser",
+						"username": testUserEmail,
 						"password": correctPassword,
 					}).
 					Run(secureRouter, func(res gofight.HTTPResponse, req gofight.HTTPRequest) {
@@ -391,6 +399,27 @@ func TestJWTRouter(t *testing.T) {
 			},
 		},
 		{
+			name: "When you try to login without the 2FA verification code, deny it",
+			test: func(t *testing.T) {
+				r := gofight.New()
+				r.POST("/login").
+					SetDebug(true).
+					SetJSON(gofight.D{
+						"username": testUserEmail,
+						"password": correctPassword,
+					}).
+					Run(secureRouter, func(res gofight.HTTPResponse, req gofight.HTTPRequest) {
+						require.Equal(t, http.StatusUnauthorized, res.Code)
+						expected, err := json.Marshal(map[string]interface{}{
+							"code":    401,
+							"message": "incorrect Username, Password or Verification Code",
+						})
+						require.NoError(t, err)
+						require.JSONEq(t, string(expected), res.Body.String())
+					})
+			},
+		},
+		{
 			name: "When you try to access a protected route with a corrupt token, deny it",
 			test: func(t *testing.T) {
 				performActionWithToken(t, func(auth authResponse) {
@@ -420,7 +449,7 @@ func TestJWTRouter(t *testing.T) {
 				performActionWithToken(t, func(auth authResponse) {
 					time.Sleep(time.Second)
 					r := gofight.New()
-					r.GET("/refresh_token").
+					r.GET("/refresh-token").
 						SetDebug(true).
 						SetHeader(gofight.H{
 							headers.Authorization: "Bearer " + auth.Token,
@@ -440,12 +469,74 @@ func TestJWTRouter(t *testing.T) {
 	}
 	for _, tt := range tests {
 		cleanDb(db)
-		services.RegisterUser(&models.Credentials{
-			Username: "testuser",
+		user, err := services.RegisterUser(&models.Credentials{
+			Email:    testUserEmail,
 			Password: correctPassword,
 		})
+		require.NoError(t, err)
+		_, err = services.Generate2FACodeAndSaveToUser(&user)
+		require.NoError(t, err)
 		t.Run(tt.name, tt.test)
 	}
+}
+
+func TestGenerate2FAAndSendMail(t *testing.T) {
+	db := getDb(t)
+	defer db.Close()
+	tests := []subtest{
+		{
+			name: "When you generate a 2FA code to an existent user with a valid email, the code is generated and the mail sent",
+			test: func(t *testing.T) {
+				r := gofight.New()
+				r.POST("/2fa-verification").
+					SetDebug(true).
+					SetJSON(gofight.D{
+						"email":    testUserRealEmail,
+						"password": correctPassword,
+					}).
+					Run(secureRouter, func(res gofight.HTTPResponse, req gofight.HTTPRequest) {
+						require.Equal(t, http.StatusOK, res.Code)
+						expected, err := json.Marshal(map[string]interface{}{
+							"message": "Verification code sent correctly to " + testUserRealEmail + ". Check your inbox!",
+						})
+						require.NoError(t, err)
+						require.JSONEq(t, string(expected), res.Body.String())
+					})
+			},
+		},
+		{
+			name: "When you generate a 2FA code to an unexistent user with a valid email, send a not found error",
+			test: func(t *testing.T) {
+				r := gofight.New()
+				r.POST("/2fa-verification").
+					SetDebug(true).
+					SetJSON(gofight.D{
+						"email":    testUserEmail,
+						"password": correctPassword,
+					}).
+					Run(secureRouter, func(res gofight.HTTPResponse, req gofight.HTTPRequest) {
+						require.Equal(t, http.StatusNotFound, res.Code)
+						expected, err := json.Marshal(map[string]interface{}{
+							"message": "Wrong credentials for: " + testUserEmail + ". Please check the username and password are correct!",
+						})
+						require.NoError(t, err)
+						require.JSONEq(t, string(expected), res.Body.String())
+					})
+			},
+		},
+	}
+	for _, tt := range tests {
+		cleanDb(db)
+		user, err := services.RegisterUser(&models.Credentials{
+			Email:    testUserRealEmail,
+			Password: correctPassword,
+		})
+		require.NoError(t, err)
+		_, err = services.Generate2FACodeAndSaveToUser(&user)
+		require.NoError(t, err)
+		t.Run(tt.name, tt.test)
+	}
+
 }
 
 func performActionWithToken(t *testing.T, action func(response authResponse)) {
@@ -453,11 +544,16 @@ func performActionWithToken(t *testing.T, action func(response authResponse)) {
 }
 
 func performActionWithTokenAndCustomRouter(t *testing.T, customRouter *gin.Engine, action func(response authResponse)) {
+	user, err := userDao.GetByPk(testUserEmail)
+	require.NoError(t, err)
 	r := gofight.New()
 	r.POST("/login").
 		SetDebug(true).
+		SetQuery(gofight.H{
+			"verification_code": user.TwoFactorAuth.ValueOrZero(),
+		}).
 		SetJSON(gofight.D{
-			"username": "testuser",
+			"username": testUserEmail,
 			"password": correctPassword,
 		}).
 		Run(customRouter, func(res gofight.HTTPResponse, req gofight.HTTPRequest) {

@@ -1,8 +1,14 @@
 package models
 
+import (
+	"gopkg.in/guregu/null.v3"
+)
+
 type Credentials struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Email         string      `json:"email"`
+	Password      string      `json:"password"`
+	TwoFactorAuth null.String `json:"two_factor_auth"`
+	TwoFactorTime null.Time   `json:"two_factor_time"`
 }
 
 type User struct {
@@ -12,7 +18,7 @@ type User struct {
 }
 
 type UserDto struct {
-	Username string `json:"username"`
+	Email string `json:"email"`
 }
 
 type UserWithFiles struct {

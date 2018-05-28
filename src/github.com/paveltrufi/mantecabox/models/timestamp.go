@@ -1,8 +1,10 @@
 package models
 
-import "github.com/lib/pq"
+import (
+	"gopkg.in/guregu/null.v3"
+)
 
 type TimeStamp struct {
-	CreatedAt pq.NullTime `json:"created_at"`
-	UpdatedAt pq.NullTime `json:"updated_at"`
+	CreatedAt null.Time `json:"created_at"`
+	UpdatedAt null.Time `json:"updated_at"`
 }

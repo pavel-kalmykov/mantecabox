@@ -1,31 +1,38 @@
 package services
 
 import (
+	"crypto/rand"
 	"encoding/base64"
 	"errors"
+	"fmt"
+	"math/big"
 	"regexp"
+	"time"
 
+	"github.com/badoux/checkmail"
 	"github.com/paveltrufi/mantecabox/config"
 	"github.com/paveltrufi/mantecabox/dao/factory"
 	"github.com/paveltrufi/mantecabox/dao/interfaces"
 	"github.com/paveltrufi/mantecabox/models"
 	"github.com/paveltrufi/mantecabox/utilities/aes"
 	"golang.org/x/crypto/bcrypt"
-)
-
-const (
-	InvalidUsernameError = "invalid username (must be a valid nickname -all lowercases- with a length between 8 and 20 characters)"
-	InvalidPasswordError = "password input is not SHA-512 hashed"
+	"gopkg.in/gomail.v2"
 )
 
 var (
-	sha512Regex   *regexp.Regexp
-	usernameRegex *regexp.Regexp
-	userDao       interfaces.UserDao
+	sha512Regex          *regexp.Regexp
+	userDao              interfaces.UserDao
+	configuration        models.Configuration
+	InvalidEmailError    = errors.New("invalid email")
+	InvalidPasswordError = errors.New("password input is not SHA-512 hashed")
+	Generating2FAError   = errors.New("unable to generate a 2FA secure code")
+	Empty2FACodeError    = errors.New("the 2FA secure code is empty")
 )
 
 func init() {
-	dao := factory.UserDaoFactory(config.GetServerConf().Engine)
+	conf := config.GetServerConf()
+	configuration = conf
+	dao := factory.UserDaoFactory(configuration.Engine)
 	userDao = dao
 
 	sha512Compile, err := regexp.Compile(`^[A-Fa-f0-9]{128}$`)
@@ -33,11 +40,6 @@ func init() {
 		panic(err)
 	}
 	sha512Regex = sha512Compile
-	usernameCompile, err := regexp.Compile(`(?i)^[a-z\d](?:[a-z\d]|_([a-z\d])){6,20}$`)
-	if err != nil {
-		panic(err)
-	}
-	usernameRegex = usernameCompile
 }
 
 func GetUsers() ([]models.User, error) {
@@ -62,7 +64,7 @@ func RegisterUser(c *models.Credentials) (models.User, error) {
 		return user, err
 	}
 	user.Credentials = models.Credentials{
-		Username: c.Username,
+		Email:    c.Email,
 		Password: base64.URLEncoding.EncodeToString(aes.Encrypt(bcryptedPassword)),
 	}
 	return userDao.Create(&user)
@@ -85,7 +87,7 @@ func ModifyUser(username string, u *models.User) (models.User, error) {
 		TimeStamp:  u.TimeStamp,
 		SoftDelete: u.SoftDelete,
 		Credentials: models.Credentials{
-			Username: u.Username,
+			Email:    u.Email,
 			Password: base64.URLEncoding.EncodeToString(aes.Encrypt(bcryptedPassword)),
 		},
 	}
@@ -96,24 +98,56 @@ func DeleteUser(username string) error {
 	return userDao.Delete(username)
 }
 
-func UserExists(username, password string) (string, bool) {
-	user, err := userDao.GetByPk(username)
+func UserExists(email, password string) (models.User, bool) {
+	user, err := userDao.GetByPk(email)
 	if err != nil {
-		return username, false
+		user.Email = email
+		return user, false
 	}
 	decodedExpectedPassword, err := base64.URLEncoding.DecodeString(password)
 	if err != nil {
-		return username, false
+		return user, false
 	}
 	decodedActualPassword, err := base64.URLEncoding.DecodeString(user.Password)
 	if err != nil {
-		return username, false
+		return user, false
 	}
 	err = bcrypt.CompareHashAndPassword(aes.Decrypt(decodedActualPassword), decodedExpectedPassword)
 	if err != nil {
-		return username, false
+		return user, false
 	}
-	return username, true
+	return user, true
+}
+
+func Generate2FACodeAndSaveToUser(user *models.User) (models.User, error) {
+	secureCode, err := rand.Int(rand.Reader, big.NewInt(999999)) // 6 digits max
+	if err != nil {
+		return *user, Generating2FAError
+	}
+	paddedSecureCode := fmt.Sprintf("%06d", secureCode)
+	user.TwoFactorAuth.SetValid(paddedSecureCode)
+	return userDao.Update(user.Email, user)
+}
+
+func Send2FAEmail(toEmail, code string) error {
+	if code == "" {
+		return Empty2FACodeError
+	}
+	if err := checkmail.ValidateHost(toEmail); err != nil {
+		return err
+	}
+	m := gomail.NewMessage()
+	m.SetHeader("From", "mantecabox@gmail.com")
+	m.SetHeader("To", toEmail)
+	m.SetHeader("Subject", "Mantecabox Security Code")
+	m.SetBody("text/html", fmt.Sprintf("Hello. Your security code is M-<b>%v</b>. It will expire in 5 minutes", code))
+	return gomail.
+		NewDialer("smtp.gmail.com", 587, "mantecabox@gmail.com", "ElPutoPavel").
+		DialAndSend(m)
+}
+
+func TwoFactorMatchesAndIsNotOutdated(expected, actual string, expire time.Time) bool {
+	return expected == actual && time.Now().Sub(expire) < time.Minute*5
 }
 
 func ValidateCredentials(c *models.Credentials) error {
@@ -121,11 +155,11 @@ func ValidateCredentials(c *models.Credentials) error {
 	if err != nil {
 		return err
 	}
-	if matches := usernameRegex.MatchString(c.Username); !matches {
-		return errors.New(InvalidUsernameError)
+	if err := checkmail.ValidateFormat(c.Email); err != nil {
+		return errors.New(fmt.Sprintf("%v (%v)", InvalidEmailError, err))
 	}
 	if matches := sha512Regex.Match(decodedPassword); !matches {
-		return errors.New(InvalidPasswordError)
+		return InvalidPasswordError
 	}
 	return nil
 }
