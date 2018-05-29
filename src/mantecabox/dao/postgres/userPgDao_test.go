@@ -11,7 +11,7 @@ import (
 
 	"github.com/aodin/date"
 	"github.com/gin-gonic/gin/json"
-	"github.com/labstack/gommon/log"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/guregu/null.v3"
 )
@@ -26,7 +26,7 @@ func TestMain(m *testing.M) {
 
 	db, err := database.GetPgDb()
 	if err != nil {
-		log.Fatal("Unable to connnect with database")
+		logrus.Fatal("Unable to connnect with database: " + err.Error())
 	}
 	cleanDb(db)
 	os.Exit(code)
@@ -341,7 +341,7 @@ func getDb(t *testing.T) *sql.DB {
 	// Test preparation
 	db, err := database.GetPgDb()
 	if err != nil {
-		log.Fatal("Unable to connnect with database")
+		logrus.Fatal("Unable to connnect with database: " + err.Error())
 	}
 	require.NotNil(t, db)
 	return db
@@ -358,6 +358,7 @@ func cleanAndPopulateDb(db *sql.DB, insertQuery string, t *testing.T) {
 func cleanDb(db *sql.DB) {
 	db.Exec("DELETE FROM users")
 	db.Exec("DELETE FROM files")
+	db.Exec("DELETE FROM login_attempts")
 }
 
 func requireUserEqualCheckingErrors(t *testing.T, wantErr bool, err error, expected models.User, actual models.User) {

@@ -6,7 +6,7 @@ import (
 	"mantecabox/database"
 	"mantecabox/models"
 
-	log "github.com/alexrudd/go-logger"
+	"github.com/sirupsen/logrus"
 )
 
 type FilePgDao struct {
@@ -22,9 +22,9 @@ func (dao FilePgDao) GetAll() ([]models.File, error) {
   u.*
 FROM files f
   JOIN users u ON f.owner = u.email
-WHERE f.deleted_at IS NULL AND u.deleted_at IS NULL `)
+WHERE f.deleted_at IS NULL AND u.deleted_at IS NULL`)
 	if err != nil {
-		log.Info("Unable to execute FilePgDao.GetAll() query. Reason:", err)
+		logrus.Info("Unable to execute FilePgDao.GetAll() query. Reason:", err)
 		return nil, err
 	}
 
@@ -38,13 +38,13 @@ WHERE f.deleted_at IS NULL AND u.deleted_at IS NULL `)
 			&file.PlatformCreation,
 			&file.Owner.CreatedAt, &file.Owner.UpdatedAt, &file.Owner.DeletedAt, &file.Owner.Email, &file.Owner.Password, &file.Owner.TwoFactorAuth, &file.Owner.TwoFactorTime)
 		if err != nil {
-			log.Info("Unable to execute FilePgDao.GetAll() query. Reason:", err)
+			logrus.Info("Unable to execute FilePgDao.GetAll() query. Reason:", err)
 			return nil, err
 		}
 		files = append(files, file)
 	}
 
-	log.Debug("Queried", len(files), "files")
+	logrus.Debug("Queried", len(files), "files")
 	return files, err
 }
 
@@ -53,7 +53,7 @@ func (dao FilePgDao) GetByPk(id int64) (models.File, error) {
 	owner := ""
 	db, err := database.GetPgDb()
 	if err != nil {
-		log.Fatal("Unable to connnect with database")
+		logrus.Fatal("Unable to connnect with database: " + err.Error())
 	}
 	defer db.Close()
 
@@ -71,9 +71,9 @@ WHERE f.deleted_at IS NULL AND u.deleted_at IS NULL AND f.id = $1`, id).Scan(
 		&file.Owner.CreatedAt, &file.Owner.UpdatedAt, &file.Owner.DeletedAt, &file.Owner.Email, &file.Owner.Password, &file.Owner.TwoFactorAuth, &file.Owner.TwoFactorTime)
 
 	if err != nil {
-		log.Debug("Unable to execute FilePgDao.GetByPk(email string) query. Reason:", err)
+		logrus.Debug("Unable to execute FilePgDao.GetByPk(email string) query. Reason:", err)
 	} else {
-		log.Debug("Retrieved file ", file)
+		logrus.Debug("Retrieved file ", file)
 	}
 	return file, err
 }
@@ -81,7 +81,7 @@ WHERE f.deleted_at IS NULL AND u.deleted_at IS NULL AND f.id = $1`, id).Scan(
 func (dao FilePgDao) Create(file *models.File) (models.File, error) {
 	db, err := database.GetPgDb()
 	if err != nil {
-		log.Fatal("Unable to connnect with database")
+		logrus.Fatal("Unable to connnect with database: " + err.Error())
 	}
 	defer db.Close()
 
@@ -100,9 +100,9 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *;`, f
 		&createdFile.PlatformCreation)
 
 	if err != nil {
-		log.Info("Unable to execute FilePgDao.Create(file models.File) query. Reason:", err)
+		logrus.Info("Unable to execute FilePgDao.Create(file models.File) query. Reason:", err)
 	} else {
-		log.Debug("Created file", createdFile)
+		logrus.Debug("Created file: ", createdFile)
 	}
 
 	owner, err := UserPgDao{}.GetByPk(createdFile.Owner.Email)
@@ -114,7 +114,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *;`, f
 func Update(id int64, file *models.File) (models.File, error) {
 	db, err := database.GetPgDb()
 	if err != nil {
-		log.Fatal("Unable to connnect with database")
+		logrus.Fatal("Unable to connnect with database: " + err.Error())
 	}
 	defer db.Close()
 
@@ -148,9 +148,9 @@ RETURNING *`,
 		&updatedFile.PlatformCreation)
 
 	if err != nil {
-		log.Info("Unable to execute FilePgDao.Update(id int64, file models.File) query. Reason:", err)
+		logrus.Info("Unable to execute FilePgDao.Update(id int64, file models.File) query. Reason:", err)
 	} else {
-		log.Debug("Created file", updatedFile)
+		logrus.Debug("Created file", updatedFile)
 	}
 
 	owner, err := UserPgDao{}.GetByPk(updatedFile.Owner.Email)
@@ -165,12 +165,12 @@ func Delete(id int64) error {
 
 	result, err := db.Exec("DELETE FROM files WHERE id = $1", id)
 	if err != nil {
-		log.Info("Unable to execute FilePgDao.Delete(id int64) query. Reason:", err)
+		logrus.Info("Unable to execute FilePgDao.Delete(id int64) query. Reason:", err)
 	} else {
 		var rowsAffected int64
 		rowsAffected, err = result.RowsAffected()
 		if err != nil {
-			log.Info("Some error occured during deleting:", err)
+			logrus.Info("Some error occured during deleting:", err)
 		} else {
 			switch {
 			case rowsAffected == 0:
@@ -179,9 +179,9 @@ func Delete(id int64) error {
 				err = errors.New("more than one deleted")
 			}
 			if err != nil {
-				log.Debug("Unable to delete file with id \""+string(id)+"\" correctly. Reason:", err)
+				logrus.Debug("Unable to delete file with id \""+string(id)+"\" correctly. Reason:", err)
 			} else {
-				log.Debug("File with id \"" + string(id) + "\" successfully deleted")
+				logrus.Debug("File with id \"" + string(id) + "\" successfully deleted")
 			}
 		}
 	}

@@ -15,7 +15,7 @@ import (
 	"mantecabox/utilities"
 	"mantecabox/utilities/aes"
 
-	"github.com/labstack/gommon/log"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -41,7 +41,7 @@ func TestMain(m *testing.M) {
 
 	db, err := database.GetPgDb()
 	if err != nil {
-		log.Fatal("Unable to connnect with database")
+		logrus.Fatal("Unable to connnect with database: " + err.Error())
 	}
 	cleanDb(db)
 	os.Exit(code)
@@ -287,7 +287,7 @@ func getDb(t *testing.T) *sql.DB {
 	// Test preparation
 	db, err := database.GetPgDb()
 	if err != nil {
-		log.Fatal("Unable to connnect with database")
+		logrus.Fatal("Unable to connnect with database: " + err.Error())
 	}
 	require.NotNil(t, db)
 	return db

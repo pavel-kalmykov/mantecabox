@@ -7,7 +7,7 @@ import (
 	"mantecabox/models"
 
 	"github.com/aodin/date"
-	"github.com/labstack/gommon/log"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/guregu/null.v3"
 )
@@ -194,7 +194,7 @@ func TestFilePgDao_Create(t *testing.T) {
 
 	db, err := database.GetPgDb()
 	if err != nil {
-		log.Fatal("Unable to connnect with database")
+		logrus.Fatal("Unable to connnect with database: " + err.Error())
 	}
 	defer db.Close()
 
@@ -263,7 +263,7 @@ func TestUpdate(t *testing.T) {
 
 	db, err := database.GetPgDb()
 	if err != nil {
-		log.Fatal("Unable to connnect with database")
+		logrus.Fatal("Unable to connnect with database: " + err.Error())
 	}
 	defer db.Close()
 

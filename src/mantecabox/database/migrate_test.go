@@ -7,9 +7,9 @@ import (
 	"github.com/golang-migrate/migrate/database/postgres"
 	"github.com/golang-migrate/migrate/source/file"
 	_ "github.com/lib/pq"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 
-	"log"
 	"os"
 	"testing"
 )
@@ -34,9 +34,9 @@ func TestMigrate(t *testing.T) {
 	// Migrate all the way up ...
 	err = m.Up()
 	if err == migrate.ErrNoChange {
-		log.Println("No migrations were made")
+		logrus.Println("No migrations were made")
 	} else if err != nil {
-		log.Println("Some error ocurred: ", err)
+		logrus.Println("Some error ocurred: ", err)
 	}
 	version, dirty, err := m.Version()
 	require.NoError(t, err)
@@ -44,5 +44,5 @@ func TestMigrate(t *testing.T) {
 	if dirty {
 		isCleanVersion = "dirty"
 	}
-	log.Printf("Current migration version: %v [%v]\n", version, isCleanVersion)
+	logrus.Printf("Current migration version: %v [%v]\n", version, isCleanVersion)
 }

@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"mantecabox/database"
 	"mantecabox/services"
 	"mantecabox/utilities/aes"
 
@@ -19,7 +20,6 @@ import (
 	"gopkg.in/dgrijalva/jwt-go.v3"
 
 	"mantecabox/dao/factory"
-	"mantecabox/dao/postgres"
 	"mantecabox/models"
 	"mantecabox/utilities"
 
@@ -59,8 +59,10 @@ func TestMain(m *testing.M) {
 
 	code := m.Run()
 
-	db := postgres.GetPgDb()
-	cleanDb(db)
+	db, err := database.GetPgDb()
+	if err == nil {
+		cleanDb(db)
+	}
 	os.Exit(code)
 }
 
@@ -569,7 +571,8 @@ func performActionWithTokenAndCustomRouter(t *testing.T, customRouter *gin.Engin
 }
 
 func getDb(t *testing.T) *sql.DB {
-	db := postgres.GetPgDb()
+	db, err := database.GetPgDb()
+	require.NoError(t, err)
 	require.NotNil(t, db)
 	return db
 }

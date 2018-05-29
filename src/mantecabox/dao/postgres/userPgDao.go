@@ -7,7 +7,7 @@ import (
 	"mantecabox/database"
 	"mantecabox/models"
 
-	log "github.com/alexrudd/go-logger"
+	"github.com/sirupsen/logrus"
 )
 
 type UserPgDao struct {
@@ -17,13 +17,13 @@ func (dao UserPgDao) GetAll() ([]models.User, error) {
 	users := make([]models.User, 0)
 	db, err := database.GetPgDb()
 	if err != nil {
-		log.Fatal("Unable to connnect with database")
+		logrus.Fatal("Unable to connnect with database: " + err.Error())
 	}
 	defer db.Close()
 
 	rows, err := db.Query("SELECT * FROM users WHERE deleted_at IS NULL")
 	if err != nil {
-		log.Info("Unable to execute UserPgDao.GetAll() query. Reason:", err)
+		logrus.Info("Unable to execute UserPgDao.GetAll() query. Reason:", err)
 		return nil, err
 	}
 
@@ -38,13 +38,13 @@ func (dao UserPgDao) GetAll() ([]models.User, error) {
 			&user.TwoFactorAuth,
 			&user.TwoFactorTime)
 		if err != nil {
-			log.Info("Unable to execute UserPgDao.GetAll() query. Reason:", err)
+			logrus.Info("Unable to execute UserPgDao.GetAll() query. Reason:", err)
 			return nil, err
 		}
 		users = append(users, user)
 	}
 
-	log.Debug("Queried", len(users), "users")
+	logrus.Debug("Queried", len(users), "users")
 	return users, err
 }
 
@@ -52,7 +52,7 @@ func (dao UserPgDao) GetByPk(email string) (models.User, error) {
 	user := models.User{}
 	db, err := database.GetPgDb()
 	if err != nil {
-		log.Fatal("Unable to connnect with database")
+		logrus.Fatal("Unable to connnect with database: " + err.Error())
 	}
 	defer db.Close()
 
@@ -66,9 +66,9 @@ func (dao UserPgDao) GetByPk(email string) (models.User, error) {
 		&user.TwoFactorTime)
 
 	if err != nil {
-		log.Debug("Unable to execute UserPgDao.GetByPk(email string) query. Reason:", err)
+		logrus.Debug("Unable to execute UserPgDao.GetByPk(email string) query. Reason:", err)
 	} else {
-		log.Debug("Retrieved user", user)
+		logrus.Debug("Retrieved user", user)
 	}
 	return user, err
 }
@@ -76,7 +76,7 @@ func (dao UserPgDao) GetByPk(email string) (models.User, error) {
 func (dao UserPgDao) Create(user *models.User) (models.User, error) {
 	db, err := database.GetPgDb()
 	if err != nil {
-		log.Fatal("Unable to connnect with database")
+		logrus.Fatal("Unable to connnect with database: " + err.Error())
 	}
 	defer db.Close()
 
@@ -92,9 +92,9 @@ func (dao UserPgDao) Create(user *models.User) (models.User, error) {
 		&createdUser.TwoFactorTime)
 
 	if err != nil {
-		log.Info("Unable to execute UserPgDao.Create(user models.User) query. Reason:", err)
+		logrus.Info("Unable to execute UserPgDao.Create(user models.User) query. Reason:", err)
 	} else {
-		log.Debug("Created user", createdUser)
+		logrus.Debug("Created user", createdUser)
 	}
 	return createdUser, err
 }
@@ -102,7 +102,7 @@ func (dao UserPgDao) Create(user *models.User) (models.User, error) {
 func (dao UserPgDao) Update(email string, user *models.User) (models.User, error) {
 	db, err := database.GetPgDb()
 	if err != nil {
-		log.Fatal("Unable to connnect with database")
+		logrus.Fatal("Unable to connnect with database: " + err.Error())
 	}
 	defer db.Close()
 
@@ -118,9 +118,9 @@ func (dao UserPgDao) Update(email string, user *models.User) (models.User, error
 		&updatedUser.TwoFactorTime)
 
 	if err != nil {
-		log.Info("Unable to execute UserPgDao.Update(email string, user models.User) query. Reason:", err)
+		logrus.Info("Unable to execute UserPgDao.Update(email string, user models.User) query. Reason:", err)
 	} else {
-		log.Debug("Updated user", updatedUser)
+		logrus.Debug("Updated user", updatedUser)
 	}
 	return updatedUser, err
 }
@@ -128,18 +128,18 @@ func (dao UserPgDao) Update(email string, user *models.User) (models.User, error
 func (dao UserPgDao) Delete(email string) error {
 	db, err := database.GetPgDb()
 	if err != nil {
-		log.Fatal("Unable to connnect with database")
+		logrus.Fatal("Unable to connnect with database: " + err.Error())
 	}
 	defer db.Close()
 
 	result, err := db.Exec("DELETE FROM users WHERE email = $1", email)
 	if err != nil {
-		log.Info("Unable to execute UserPgDao.Delete(email string) query. Reason:", err)
+		logrus.Info("Unable to execute UserPgDao.Delete(email string) query. Reason:", err)
 	} else {
 		var rowsAffected int64
 		rowsAffected, err = result.RowsAffected()
 		if err != nil {
-			log.Info("Some error occured during deleting:", err)
+			logrus.Info("Some error occured during deleting:", err)
 		} else {
 			switch {
 			case rowsAffected == 0:
@@ -148,9 +148,9 @@ func (dao UserPgDao) Delete(email string) error {
 				err = errors.New("more than one deleted")
 			}
 			if err != nil {
-				log.Debug("Unable to delete user with email \""+email+"\" correctly. Reason:", err)
+				logrus.Debug("Unable to delete user with email \""+email+"\" correctly. Reason:", err)
 			} else {
-				log.Debug("User with email \"" + email + "\" successfully deleted")
+				logrus.Debug("User with email \"" + email + "\" successfully deleted")
 			}
 		}
 	}

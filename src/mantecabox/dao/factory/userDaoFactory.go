@@ -4,7 +4,7 @@ import (
 	"mantecabox/dao/interfaces"
 	"mantecabox/dao/postgres"
 
-	log "github.com/alexrudd/go-logger"
+	"github.com/sirupsen/logrus"
 )
 
 func UserDaoFactory(engine string) interfaces.UserDao {
@@ -13,7 +13,7 @@ func UserDaoFactory(engine string) interfaces.UserDao {
 	case "postgres":
 		userDao = postgres.UserPgDao{}
 	default:
-		log.Info(engine, "engine is not yet implemented")
+		logrus.Info(engine, "engine is not yet implemented")
 		return nil
 	}
 	return userDao

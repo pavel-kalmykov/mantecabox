@@ -1,10 +1,11 @@
 package utilities
 
 import (
-	log "github.com/alexrudd/go-logger"
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 const dockerContainerName = "sds-postgres"
@@ -21,13 +22,13 @@ func StartDockerPostgresDb() {
 		output, err := exec.Command("docker", "container", "start", dockerContainerName).Output()
 		checkErr(err)
 		if strings.HasPrefix(string(output), dockerContainerName) {
-			log.Debug("Docker container '%s' started\n", dockerContainerName)
+			logrus.Debug("Docker container '%s' started\n", dockerContainerName)
 			time.Sleep(time.Second * 2) // Lo que tarde en arrancar, más o menos
 		} else {
 			panic("Unable to start Postgre's docker container!")
 		}
 	} else {
-		log.Debug("Docker container '%s' already running\n", dockerContainerName)
+		logrus.Debug("Docker container '%s' already running\n", dockerContainerName)
 	}
 }
 
