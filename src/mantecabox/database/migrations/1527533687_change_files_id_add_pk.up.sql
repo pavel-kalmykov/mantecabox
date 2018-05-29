@@ -1,0 +1,2 @@
+ALTER TABLE files
+  ADD CONSTRAINT files_id_pk PRIMARY KEY (id);
