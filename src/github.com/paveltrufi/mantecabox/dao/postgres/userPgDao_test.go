@@ -6,13 +6,14 @@ import (
 	"testing"
 
 	"github.com/aodin/date"
-	"github.com/lib/pq"
+	"github.com/gin-gonic/gin/json"
 	"github.com/paveltrufi/mantecabox/models"
 	"github.com/paveltrufi/mantecabox/utilities"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/guregu/null.v3"
 )
 
-const testUserInsert = `INSERT INTO users (username, password) VALUES ('testuser1', 'testpassword1');`
+const testUserInsert = `INSERT INTO users (email, password) VALUES ('testuser1', 'testpassword1');`
 
 func TestMain(m *testing.M) {
 	utilities.StartDockerPostgresDb()
@@ -33,12 +34,12 @@ func TestUserPgDao_GetAll(t *testing.T) {
 	}{
 		{
 			"When the users table has some users, retrieve all them",
-			`INSERT INTO users(username, password)
+			`INSERT INTO users(email, password)
 VALUES  ('testuser1', 'testpassword1'),
 		('testuser2', 'testpassword2')`,
 			[]models.User{
-				{Credentials: models.Credentials{Username: "testuser1", Password: "testpassword1"}},
-				{Credentials: models.Credentials{Username: "testuser2", Password: "testpassword2"}},
+				{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}},
+				{Credentials: models.Credentials{Email: "testuser2", Password: "testpassword2"}},
 			},
 		},
 		{
@@ -48,11 +49,11 @@ VALUES  ('testuser1', 'testpassword1'),
 		},
 		{
 			"When the users table has some deleted users, don't retrieve them",
-			`INSERT INTO users(deleted_at, username, password)
+			`INSERT INTO users(deleted_at, email, password)
 VALUES  (NULL, 'testuser1', 'testpassword1'),
 		(NOW(), 'testuser2', 'testpassword2')`,
 			[]models.User{
-				{Credentials: models.Credentials{Username: "testuser1", Password: "testpassword1"}},
+				{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}},
 			},
 		},
 	}
@@ -75,8 +76,8 @@ VALUES  (NULL, 'testuser1', 'testpassword1'),
 				updatedAtDate := date.FromTime(v.UpdatedAt.Time)
 				require.True(t, createdAtDate.Within(date.SingleDay(createdAtDate)))
 				require.True(t, updatedAtDate.Within(date.SingleDay(updatedAtDate)))
-				got[k].CreatedAt = pq.NullTime{}
-				got[k].UpdatedAt = pq.NullTime{}
+				got[k].CreatedAt = null.Time{}
+				got[k].UpdatedAt = null.Time{}
 			}
 			require.Equal(t, testCase.want, got)
 		})
@@ -85,7 +86,7 @@ VALUES  (NULL, 'testuser1', 'testpassword1'),
 
 func TestUserPgDao_GetByPk(t *testing.T) {
 	type args struct {
-		username string
+		email string
 	}
 	testCases := []struct {
 		name        string
@@ -97,19 +98,19 @@ func TestUserPgDao_GetByPk(t *testing.T) {
 		{
 			"When you ask for an existent user, retrieve it",
 			testUserInsert,
-			args{username: "testuser1"},
-			models.User{Credentials: models.Credentials{Username: "testuser1", Password: "testpassword1"}},
+			args{email: "testuser1"},
+			models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}},
 			false,
 		},
 		{
 			"When you ask for an non-existent user, return an empty user and an error",
 			"",
-			args{username: "nonexistentuser"},
+			args{email: "nonexistentuser"},
 			models.User{},
 			true,
 		},
 		{
-			"When you ask for a user with an empty username, return an empty user and an error",
+			"When you ask for a user with an empty email, return an empty user and an error",
 			"",
 			args{},
 			models.User{},
@@ -117,9 +118,9 @@ func TestUserPgDao_GetByPk(t *testing.T) {
 		},
 		{
 			"When you ask for a deleted user, return an empty user and an error",
-			`INSERT INTO users (deleted_at, username, password) 
+			`INSERT INTO users (deleted_at, email, password) 
 VALUES (NOW(), 'testuser1', 'testpassword1');`,
-			args{username: "testuser1"},
+			args{email: "testuser1"},
 			models.User{},
 			true,
 		},
@@ -133,14 +134,14 @@ VALUES (NOW(), 'testuser1', 'testpassword1');`,
 
 		t.Run(testCase.name, func(t *testing.T) {
 			dao := UserPgDao{}
-			got, err := dao.GetByPk(testCase.args.username)
+			got, err := dao.GetByPk(testCase.args.email)
 			requireUserEqualCheckingErrors(t, testCase.wantErr, err, testCase.want, got)
 		})
 	}
 }
 
 func TestUserPgDao_Create(t *testing.T) {
-	user := models.User{Credentials: models.Credentials{Username: "testuser1", Password: "testpassword1"}}
+	user := models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}
 	type args struct {
 		user *models.User
 	}
@@ -166,7 +167,7 @@ func TestUserPgDao_Create(t *testing.T) {
 			true,
 		},
 		{
-			"When you create a new user without username, return an empty user and an error",
+			"When you create a new user without email, return an empty user and an error",
 			"",
 			args{user: &models.User{Credentials: models.Credentials{Password: "testpassword1"}}},
 			models.User{},
@@ -175,7 +176,7 @@ func TestUserPgDao_Create(t *testing.T) {
 		{
 			"When you create a new user without password, return an empty user and an error",
 			"",
-			args{user: &models.User{Credentials: models.Credentials{Username: "testuser1"}}},
+			args{user: &models.User{Credentials: models.Credentials{Email: "testuser1"}}},
 			models.User{},
 			true,
 		},
@@ -195,10 +196,10 @@ func TestUserPgDao_Create(t *testing.T) {
 	}
 }
 func TestUserPgDao_Update(t *testing.T) {
-	user := models.User{Credentials: models.Credentials{Username: "testuser2", Password: "testpassword2"}}
+	user := models.User{Credentials: models.Credentials{Email: "testuser2", Password: "testpassword2"}}
 	type args struct {
-		username string
-		user     *models.User
+		email string
+		user  *models.User
 	}
 	testCases := []struct {
 		name        string
@@ -210,35 +211,35 @@ func TestUserPgDao_Update(t *testing.T) {
 		{
 			"When you update an already inserted user, return the user updated",
 			testUserInsert,
-			args{username: "testuser1", user: &user},
+			args{email: "testuser1", user: &user},
 			user,
 			false,
 		},
 		{
 			"When you update a non-existent user, return an empty user and an error",
 			testUserInsert,
-			args{username: "testuser2", user: &user},
+			args{email: "testuser2", user: &user},
 			models.User{},
 			true,
 		},
 		{
-			"When you update a user with an empty username query, return an empty user and an error",
+			"When you update a user with an empty email query, return an empty user and an error",
 			testUserInsert,
-			args{username: "", user: &user},
+			args{email: "", user: &user},
 			models.User{},
 			true,
 		},
 		{
-			"When you update an inserted user without username, return an empty user and an error",
+			"When you update an inserted user without email, return an empty user and an error",
 			testUserInsert,
-			args{username: "testuser1", user: &models.User{Credentials: models.Credentials{Password: "testpassword2"}}},
+			args{email: "testuser1", user: &models.User{Credentials: models.Credentials{Password: "testpassword2"}}},
 			models.User{},
 			true,
 		},
 		{
 			"When you update an inserted user without password, return an empty user and an error",
 			testUserInsert,
-			args{username: "testuser1", user: &models.User{Credentials: models.Credentials{Username: "testuser2"}}},
+			args{email: "testuser1", user: &models.User{Credentials: models.Credentials{Email: "testuser2"}}},
 			models.User{},
 			true,
 		},
@@ -252,15 +253,32 @@ func TestUserPgDao_Update(t *testing.T) {
 
 		t.Run(testCase.name, func(t *testing.T) {
 			dao := UserPgDao{}
-			got, err := dao.Update(testCase.args.username, testCase.args.user)
+			got, err := dao.Update(testCase.args.email, testCase.args.user)
 			requireUserEqualCheckingErrors(t, testCase.wantErr, err, testCase.want, got)
 		})
 	}
 }
 
+func TestUserPgDao_Update2FA(t *testing.T) {
+	db := getDb(t)
+	defer db.Close()
+	cleanAndPopulateDb(db, testUserInsert, t)
+	updatedUser, err := UserPgDao{}.Update("testuser1", &models.User{
+		Credentials: models.Credentials{
+			Email:         "testuser1",
+			Password:      "tespass",
+			TwoFactorAuth: null.String{NullString: sql.NullString{Valid: true, String: "012345"}},
+		},
+	})
+	require.NoError(t, err)
+	require.True(t, updatedUser.TwoFactorTime.Valid)
+	twoFactorTime := date.FromTime(updatedUser.TwoFactorTime.Time)
+	require.True(t, twoFactorTime.Within(date.SingleDay(twoFactorTime)))
+}
+
 func TestUserPgDao_Delete(t *testing.T) {
 	type args struct {
-		username string
+		email string
 	}
 	testCases := []struct {
 		name        string
@@ -271,19 +289,19 @@ func TestUserPgDao_Delete(t *testing.T) {
 		{
 			"When you delete an inserted user, return no error",
 			testUserInsert,
-			args{username: "testuser1"},
+			args{email: "testuser1"},
 			false,
 		},
 		{
 			"When you delete a non-existent user, return an error",
 			testUserInsert,
-			args{username: "testuser2"},
+			args{email: "testuser2"},
 			true,
 		},
 		{
-			"When you update a user with an empty username query, return an error",
+			"When you update a user with an empty email query, return an error",
 			testUserInsert,
-			args{username: ""},
+			args{email: ""},
 			true,
 		},
 	}
@@ -296,7 +314,7 @@ func TestUserPgDao_Delete(t *testing.T) {
 
 		t.Run(testCase.name, func(t *testing.T) {
 			dao := UserPgDao{}
-			err := dao.Delete(testCase.args.username)
+			err := dao.Delete(testCase.args.email)
 			if testCase.wantErr {
 				require.Error(t, err)
 			} else {
@@ -304,6 +322,13 @@ func TestUserPgDao_Delete(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestJSONParsing(t *testing.T) {
+	credentials := models.Credentials{}
+	bytes, err := json.Marshal(credentials)
+	require.NoError(t, err)
+	require.Equal(t, `{"email":"","password":"","two_factor_auth":null,"two_factor_time":null}`, string(bytes))
 }
 
 func getDb(t *testing.T) *sql.DB {
@@ -337,8 +362,8 @@ func requireUserEqualCheckingErrors(t *testing.T, wantErr bool, err error, expec
 		updatedAtDate := date.FromTime(actual.UpdatedAt.Time)
 		require.True(t, createdAtDate.Within(date.SingleDay(createdAtDate)))
 		require.True(t, updatedAtDate.Within(date.SingleDay(updatedAtDate)))
-		actual.CreatedAt = pq.NullTime{}
-		actual.UpdatedAt = pq.NullTime{}
+		actual.CreatedAt = null.Time{}
+		actual.UpdatedAt = null.Time{}
 	}
 	require.Equal(t, expected, actual)
 }

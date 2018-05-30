@@ -19,11 +19,24 @@ var AuthMiddleware = &jwt.GinJWTMiddleware{
 	Key:        aes.Key,
 	Timeout:    time.Hour,
 	MaxRefresh: time.Hour,
-	Authenticator: func(username string, password string, _ *gin.Context) (string, bool) {
-		return services.UserExists(username, password)
+	HTTPStatusMessageFunc: func(err error, c *gin.Context) string {
+		switch err {
+		case jwt.ErrFailedAuthentication:
+			return "incorrect Username, Password or Verification Code"
+		default:
+			return err.Error()
+		}
+	},
+	Authenticator: func(email string, password string, c *gin.Context) (string, bool) {
+		twoFactorAuth := c.Query("verification_code")
+		userFound, exists := services.UserExists(email, password)
+		return email, exists && services.TwoFactorMatchesAndIsNotOutdated(
+			userFound.TwoFactorAuth.ValueOrZero(),
+			twoFactorAuth,
+			userFound.TwoFactorTime.ValueOrZero())
 	},
 	Authorizator: func(username string, c *gin.Context) bool {
-		userparam := c.Param("username")
+		userparam := c.Param("email")
 		return userparam == "" || userparam == username
 	},
 }
@@ -31,7 +44,7 @@ var AuthMiddleware = &jwt.GinJWTMiddleware{
 func GetUsers(c *gin.Context) {
 	users, err := services.GetUsers()
 	if err != nil {
-		sendJsonError(c, http.StatusInternalServerError, "Unable to retrieve users: "+err.Error())
+		sendJsonMsg(c, http.StatusInternalServerError, "Unable to retrieve users: "+err.Error())
 		return
 	}
 	var dtos []models.UserDto
@@ -40,13 +53,13 @@ func GetUsers(c *gin.Context) {
 }
 
 func GetUser(c *gin.Context) {
-	username := c.Param("username")
+	username := c.Param("email")
 	user, err := services.GetUser(username)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			sendJsonError(c, http.StatusNotFound, "Unable to find user: "+username)
+			sendJsonMsg(c, http.StatusNotFound, "Unable to find user: "+username)
 		} else {
-			sendJsonError(c, http.StatusInternalServerError, "Unable to find user: "+err.Error())
+			sendJsonMsg(c, http.StatusInternalServerError, "Unable to find user: "+err.Error())
 		}
 		return
 	}
@@ -59,12 +72,12 @@ func RegisterUser(c *gin.Context) {
 	var credentials models.Credentials
 	err := c.ShouldBindJSON(&credentials)
 	if err != nil {
-		sendJsonError(c, http.StatusBadRequest, "Unable to parse JSON: "+err.Error())
+		sendJsonMsg(c, http.StatusBadRequest, "Unable to parse JSON: "+err.Error())
 		return
 	}
 	registeredUser, err := services.RegisterUser(&credentials)
 	if err != nil {
-		sendJsonError(c, http.StatusBadRequest, "Unable to register user: "+err.Error())
+		sendJsonMsg(c, http.StatusBadRequest, "Unable to register user: "+err.Error())
 		return
 	}
 	var dto models.UserDto
@@ -76,16 +89,16 @@ func ModifyUser(c *gin.Context) {
 	var user models.User
 	err := c.ShouldBindJSON(&user)
 	if err != nil {
-		sendJsonError(c, http.StatusBadRequest, "Unable to parse JSON: "+err.Error())
+		sendJsonMsg(c, http.StatusBadRequest, "Unable to parse JSON: "+err.Error())
 		return
 	}
-	username := c.Param("username")
+	username := c.Param("email")
 	user, err = services.ModifyUser(username, &user)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			sendJsonError(c, http.StatusNotFound, "Unable to find user: "+username)
+			sendJsonMsg(c, http.StatusNotFound, "Unable to find user: "+username)
 		} else {
-			sendJsonError(c, http.StatusBadRequest, "Unable to modify user: "+err.Error())
+			sendJsonMsg(c, http.StatusBadRequest, "Unable to modify user: "+err.Error())
 		}
 		return
 	}
@@ -95,20 +108,47 @@ func ModifyUser(c *gin.Context) {
 }
 
 func DeleteUser(c *gin.Context) {
-	username := c.Param("username")
-	err := services.DeleteUser(username)
+	email := c.Param("email")
+	err := services.DeleteUser(email)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			sendJsonError(c, http.StatusNotFound, "Unable to find user: "+username)
+			sendJsonMsg(c, http.StatusNotFound, "Unable to find user: "+email)
 		} else {
-			sendJsonError(c, http.StatusBadRequest, "Unable to delete user: "+err.Error())
+			sendJsonMsg(c, http.StatusBadRequest, "Unable to delete user: "+err.Error())
 		}
 		return
 	}
 	c.Writer.WriteHeader(http.StatusNoContent)
 }
 
-func sendJsonError(c *gin.Context, status int, msg string) {
+func Generate2FAAndSendMail(c *gin.Context) {
+	var credentials models.Credentials
+	err := c.ShouldBindJSON(&credentials)
+	if err != nil {
+		sendJsonMsg(c, http.StatusBadRequest, "Unable to parse JSON: "+err.Error())
+		return
+	}
+	foundUser, exists := services.UserExists(credentials.Email, credentials.Password)
+	if !exists {
+		sendJsonMsg(c, http.StatusNotFound, "Wrong credentials for: "+credentials.Email+". Please check the username and password are correct!")
+		return
+	}
+	userWithCode, err := services.Generate2FACodeAndSaveToUser(&foundUser)
+	if err != nil {
+		sendJsonMsg(c, http.StatusInternalServerError, "Error creating secure code: "+err.Error())
+		return
+	}
+	err = services.Send2FAEmail(userWithCode.Email, userWithCode.TwoFactorAuth.ValueOrZero())
+	if err != nil {
+		sendJsonMsg(c, http.StatusInternalServerError, "Error sending email: "+err.Error())
+		return
+	}
+	c.JSON(http.StatusOK, models.ServerError{
+		Message: "Verification code sent correctly to " + credentials.Email + ". Check your inbox!",
+	})
+}
+
+func sendJsonMsg(c *gin.Context, status int, msg string) {
 	c.AbortWithStatusJSON(status, models.ServerError{
 		Message: msg,
 	})
