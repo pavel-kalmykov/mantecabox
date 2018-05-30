@@ -41,8 +41,7 @@ func scanLoginAttemptWithNestedUser(rows *sql.Rows) ([]models.LoginAttempt, erro
 			&attempt.CreatedAt,
 			&user,
 			&attempt.UserAgent,
-			&attempt.IPv4,
-			&attempt.IPv6,
+			&attempt.IP,
 			&attempt.Successful,
 			&attempt.User.CreatedAt,
 			&attempt.User.UpdatedAt,
@@ -105,10 +104,10 @@ ORDER BY reversed.id`, email, n)
 func (dao LoginAttemptPgDao) Create(attempt *models.LoginAttempt) (models.LoginAttempt, error) {
 	return withDb(func(db *sql.DB) (models.LoginAttempt, error) {
 		var createdAttempt models.LoginAttempt
-		err := db.QueryRow(`INSERT INTO login_attempts ("user", user_agent, ipv4, ipv6, successful) VALUES ($1, $2, $3, $4, $5)
-RETURNING *;`, attempt.User.Email, attempt.UserAgent, attempt.IPv4, attempt.IPv6, attempt.Successful).
+		err := db.QueryRow(`INSERT INTO login_attempts ("user", user_agent, ip, successful) VALUES ($1, $2, $3, $4)
+RETURNING *;`, attempt.User.Email, attempt.UserAgent, attempt.IP, attempt.Successful).
 			Scan(&createdAttempt.Id, &createdAttempt.CreatedAt, &createdAttempt.User.Email,
-				&createdAttempt.UserAgent, &createdAttempt.IPv4, &createdAttempt.IPv6, &createdAttempt.Successful)
+				&createdAttempt.UserAgent, &createdAttempt.IP, &createdAttempt.Successful)
 		if err != nil {
 			logrus.Info("Unable to execute FilePgDao.Create(file models.File) query. Reason:", err)
 			return createdAttempt, err
@@ -131,8 +130,7 @@ func (dao LoginAttemptPgDao) GetSimilarAttempts(attempt *models.LoginAttempt) ([
 		WHERE u.deleted_at IS NULL
 		AND la."user" = $1
 		AND la.user_agent = $2
-		AND la.ipv4 = $3
-		AND la.ipv6 = $4;`, attempt.User.Email, attempt.UserAgent, attempt.IPv4, attempt.IPv6)
+		AND la.ip = $3;`, attempt.User.Email, attempt.UserAgent, attempt.IP)
 		if err != nil {
 			logrus.Info("Unable to execute LoginAttemptPgDao.GetSimilarAttempts() query. Reason:", err)
 			return nil, err

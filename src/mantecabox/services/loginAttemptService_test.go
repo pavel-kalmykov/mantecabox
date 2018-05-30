@@ -14,15 +14,13 @@ var (
 	successfulAttempt = models.LoginAttempt{
 		User:       models.User{Credentials: models.Credentials{Email: testUserEmail, Password: correctPassword}},
 		UserAgent:  null.String{NullString: sql.NullString{String: "Mozilla/5.0 (Linux; Android 6.0; Nexus 5X Build/MDB08L) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.76 Mobile Safari/537.36", Valid: true}},
-		IPv4:       null.String{NullString: sql.NullString{String: "127.0.0.1", Valid: true}},
-		IPv6:       null.String{NullString: sql.NullString{String: "::1", Valid: true}},
+		IP:         null.String{NullString: sql.NullString{String: "127.0.0.1", Valid: true}},
 		Successful: true,
 	}
 	unsuccessfulAttempt = models.LoginAttempt{
 		User:       successfulAttempt.User,
 		UserAgent:  successfulAttempt.UserAgent,
-		IPv4:       successfulAttempt.IPv4,
-		IPv6:       successfulAttempt.IPv6,
+		IP:         successfulAttempt.IP,
 		Successful: false,
 	}
 )

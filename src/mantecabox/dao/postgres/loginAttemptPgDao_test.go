@@ -11,11 +11,11 @@ import (
 )
 
 const (
-	testuserWithFourAttemptsInsert = testUserInsert + `insert into login_attempts ("user", user_agent, ipv4, ipv6, successful) values 
-  ('testuser1', 'user-agent1', '127.0.0.1', '::1', true),
-  ('testuser1', 'user-agent2', '127.0.0.1', '::1', true),
-  ('testuser1', 'user-agent1', '192.168.0.160', 'fe80::3fe2:ac6:1210:aabc', false),
-  ('testuser1', null, null, null, false);`
+	testuserWithFourAttemptsInsert = testUserInsert + `insert into login_attempts ("user", user_agent, ip, successful) values 
+  ('testuser1', 'user-agent1', '127.0.0.1', true),
+  ('testuser1', 'user-agent2', '127.0.0.1', true),
+  ('testuser1', 'user-agent1', '192.168.0.160', false),
+  ('testuser1', null, null, false);`
 )
 
 var (
@@ -23,29 +23,25 @@ var (
 	loginAttemptTest1 = models.LoginAttempt{
 		User:       models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}},
 		UserAgent:  null.String{NullString: sql.NullString{String: "user-agent1", Valid: true}},
-		IPv4:       null.String{NullString: sql.NullString{String: "127.0.0.1", Valid: true}},
-		IPv6:       null.String{NullString: sql.NullString{String: "::1", Valid: true}},
+		IP:         null.String{NullString: sql.NullString{String: "127.0.0.1", Valid: true}},
 		Successful: true,
 	}
 	loginAttemptTest2 = models.LoginAttempt{
 		User:       models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}},
 		UserAgent:  null.String{NullString: sql.NullString{String: "user-agent2", Valid: true}},
-		IPv4:       null.String{NullString: sql.NullString{String: "127.0.0.1", Valid: true}},
-		IPv6:       null.String{NullString: sql.NullString{String: "::1", Valid: true}},
+		IP:         null.String{NullString: sql.NullString{String: "127.0.0.1", Valid: true}},
 		Successful: true,
 	}
 	loginAttemptTest3 = models.LoginAttempt{
 		User:       models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}},
 		UserAgent:  null.String{NullString: sql.NullString{String: "user-agent1", Valid: true}},
-		IPv4:       null.String{NullString: sql.NullString{String: "192.168.0.160", Valid: true}},
-		IPv6:       null.String{NullString: sql.NullString{String: "fe80::3fe2:ac6:1210:aabc", Valid: true}},
+		IP:         null.String{NullString: sql.NullString{String: "192.168.0.160", Valid: true}},
 		Successful: false,
 	}
 	loginAttemptTest4 = models.LoginAttempt{
 		User:       models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}},
 		UserAgent:  null.String{NullString: sql.NullString{Valid: false}},
-		IPv4:       null.String{NullString: sql.NullString{Valid: false}},
-		IPv6:       null.String{NullString: sql.NullString{Valid: false}},
+		IP:         null.String{NullString: sql.NullString{Valid: false}},
 		Successful: false,
 	}
 )
@@ -157,21 +153,17 @@ func TestLoginAttemptPgDao_Create(t *testing.T) {
 	successfulAttempt := models.LoginAttempt{
 		User:       models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}},
 		UserAgent:  null.String{NullString: sql.NullString{String: "Mozilla/5.0 (Linux; Android 6.0; Nexus 5X Build/MDB08L) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.76 Mobile Safari/537.36", Valid: true}},
-		IPv4:       null.String{NullString: sql.NullString{String: "127.0.0.1", Valid: true}},
-		IPv6:       null.String{NullString: sql.NullString{String: "0000:0000:0000:0000:0000:0000", Valid: true}},
+		IP:         null.String{NullString: sql.NullString{String: "127.0.0.1", Valid: true}},
 		Successful: true,
 	}
 	unsuccessfulAttempt := successfulAttempt
 	unsuccessfulAttempt.Successful = false
 	attemptWithoutIps := successfulAttempt
-	attemptWithoutIps.IPv4 = null.String{}
-	attemptWithoutIps.IPv6 = null.String{}
+	attemptWithoutIps.IP = null.String{}
 	attemptWithoutUserAgent := successfulAttempt
 	attemptWithoutUserAgent.UserAgent = null.String{}
-	attemptWithMalformedIpv4 := successfulAttempt
-	attemptWithMalformedIpv4.IPv4 = null.String{NullString: sql.NullString{String: "localhost 127.0.0.1", Valid: true}}
-	attemptWithMalformedIpv6 := successfulAttempt
-	attemptWithMalformedIpv6.IPv6 = null.String{NullString: sql.NullString{String: "127.0.0.1. 0000:0000:0000:0000:0000:0000", Valid: true}}
+	attemptWithMalformedIp := successfulAttempt
+	attemptWithMalformedIp.IP = null.String{NullString: sql.NullString{String: "localhost 127.0.0.1", Valid: true}}
 
 	type args struct {
 		attempt *models.LoginAttempt
@@ -214,15 +206,8 @@ func TestLoginAttemptPgDao_Create(t *testing.T) {
 		{
 			name:      "Create an attempt with malformed IPv4",
 			prepQuery: testUserInsert,
-			args:      args{attempt: &attemptWithMalformedIpv4},
-			want:      &attemptWithMalformedIpv4,
-			wantErr:   true,
-		},
-		{
-			name:      "Create an attempt with malformed IPv6",
-			prepQuery: testUserInsert,
-			args:      args{attempt: &attemptWithMalformedIpv6},
-			want:      &attemptWithMalformedIpv6,
+			args:      args{attempt: &attemptWithMalformedIp},
+			want:      &attemptWithMalformedIp,
 			wantErr:   true,
 		},
 	}
@@ -245,8 +230,7 @@ func TestLoginAttemptPgDao_Create(t *testing.T) {
 
 func TestLoginAttemptPgDao_GetSimilarAttempts(t *testing.T) {
 	attemptFromNewPlace := loginAttemptTest1
-	attemptFromNewPlace.IPv4.SetValid("209.173.53.167")
-	attemptFromNewPlace.IPv6.SetValid("0:0:0:0:0:ffff:d1ad:35a7")
+	attemptFromNewPlace.IP.SetValid("209.173.53.167")
 
 	type args struct {
 		attempt *models.LoginAttempt
@@ -296,7 +280,6 @@ func TestLoginAttemptPgDao_GetSimilarAttempts(t *testing.T) {
 func requireUserAttemptEqual(t *testing.T, expected models.LoginAttempt, actual models.LoginAttempt) {
 	require.Equal(t, expected.User.Credentials, actual.User.Credentials)
 	require.Equal(t, expected.UserAgent, actual.UserAgent)
-	require.Equal(t, expected.IPv4, actual.IPv4)
-	require.Equal(t, expected.IPv6, actual.IPv6)
+	require.Equal(t, expected.IP, actual.IP)
 	require.Equal(t, expected.Successful, actual.Successful)
 }

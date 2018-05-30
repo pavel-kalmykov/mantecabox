@@ -11,7 +11,6 @@ type LoginAttempt struct {
 	CreatedAt  time.Time   `json:"created_at"`
 	User       User        `json:"user"`
 	UserAgent  null.String `json:"user_agent"`
-	IPv4       null.String `json:"ip_v4"`
-	IPv6       null.String `json:"ip_v6"`
+	IP         null.String `json:"ip_v4"`
 	Successful bool        `json:"successful"`
 }
