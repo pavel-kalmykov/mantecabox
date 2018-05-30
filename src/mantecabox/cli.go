@@ -174,12 +174,12 @@ func main() {
 	if args.Operation == "signup" {
 		err := signup(readCredentials)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "An error ocurred during signup: %v.\n", err)
+			fmt.Fprintf(os.Stderr, "An error ocurred during signup: %v\n", err)
 		}
 	} else if args.Operation == "login" {
 		err := login(readCredentials)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "An error ocurred during login: %v.\n", err)
+			fmt.Fprintf(os.Stderr, "An error ocurred during login: %v\n", err)
 		}
 	} else if args.Operation == "help" {
 		parser.WriteHelp(os.Stdin)
