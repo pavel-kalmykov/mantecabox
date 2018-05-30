@@ -102,7 +102,7 @@ ORDER BY reversed.id`, email, n)
 	})
 }
 
-func (dao LoginAttemptPgDao) Create(attempt models.LoginAttempt) (models.LoginAttempt, error) {
+func (dao LoginAttemptPgDao) Create(attempt *models.LoginAttempt) (models.LoginAttempt, error) {
 	return withDb(func(db *sql.DB) (models.LoginAttempt, error) {
 		var createdAttempt models.LoginAttempt
 		err := db.QueryRow(`INSERT INTO login_attempts ("user", user_agent, ipv4, ipv6, successful) VALUES ($1, $2, $3, $4, $5)
@@ -118,5 +118,25 @@ RETURNING *;`, attempt.User.Email, attempt.UserAgent, attempt.IPv4, attempt.IPv6
 		owner, err := UserPgDao{}.GetByPk(createdAttempt.User.Email)
 		createdAttempt.User = owner
 		return createdAttempt, err
+	})
+}
+
+func (dao LoginAttemptPgDao) GetSimilarAttempts(attempt *models.LoginAttempt) ([]models.LoginAttempt, error) {
+	return withDbArray(func(db *sql.DB) ([]models.LoginAttempt, error) {
+		rows, err := db.Query(`SELECT
+		la.*,
+		u.*
+		FROM login_attempts la
+		JOIN users u ON la."user" = u.email
+		WHERE u.deleted_at IS NULL
+		AND la."user" = $1
+		AND la.user_agent = $2
+		AND la.ipv4 = $3
+		AND la.ipv6 = $4;`, attempt.User.Email, attempt.UserAgent, attempt.IPv4, attempt.IPv6)
+		if err != nil {
+			logrus.Info("Unable to execute LoginAttemptPgDao.GetSimilarAttempts() query. Reason:", err)
+			return nil, err
+		}
+		return scanLoginAttemptWithNestedUser(rows)
 	})
 }
