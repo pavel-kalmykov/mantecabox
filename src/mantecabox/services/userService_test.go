@@ -295,6 +295,8 @@ func getDb(t *testing.T) *sql.DB {
 
 func cleanDb(db *sql.DB) {
 	db.Exec("DELETE FROM users")
+	db.Exec("DELETE FROM files")
+	db.Exec("DELETE FROM login_attempts")
 }
 
 func TestDeleteUser(t *testing.T) {

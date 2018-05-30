@@ -11,7 +11,6 @@ import (
 
 	"mantecabox/config"
 	"mantecabox/dao/factory"
-	"mantecabox/dao/interfaces"
 	"mantecabox/models"
 	"mantecabox/utilities/aes"
 
@@ -22,8 +21,8 @@ import (
 
 var (
 	sha512Regex          *regexp.Regexp
-	userDao              interfaces.UserDao
-	configuration        models.Configuration
+	configuration        = config.GetServerConf()
+	userDao              = factory.UserDaoFactory(configuration.Engine)
 	InvalidEmailError    = errors.New("invalid email")
 	InvalidPasswordError = errors.New("password input is not SHA-512 hashed")
 	Generating2FAError   = errors.New("unable to generate a 2FA secure code")
@@ -31,11 +30,6 @@ var (
 )
 
 func init() {
-	conf := config.GetServerConf()
-	configuration = conf
-	dao := factory.UserDaoFactory(configuration.Engine)
-	userDao = dao
-
 	sha512Compile, err := regexp.Compile(`^[A-Fa-f0-9]{128}$`)
 	if err != nil {
 		panic(err)
