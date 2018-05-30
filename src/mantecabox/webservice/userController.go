@@ -12,6 +12,7 @@ import (
 	"github.com/PeteProgrammer/go-automapper"
 	"github.com/appleboy/gin-jwt"
 	"github.com/gin-gonic/gin"
+	"github.com/go-http-utils/headers"
 )
 
 // the jwt middleware
@@ -31,10 +32,8 @@ var AuthMiddleware = &jwt.GinJWTMiddleware{
 	Authenticator: func(email string, password string, c *gin.Context) (interface{}, bool) {
 		twoFactorAuth := c.Query("verification_code")
 		userFound, exists := services.UserExists(email, password)
-		if !exists {
-			return nil, false
-		}
-		return &userFound, services.TwoFactorMatchesAndIsNotOutdated(
+		processLoginAttempt(email, exists, c)
+		return &userFound, exists && services.TwoFactorMatchesAndIsNotOutdated(
 			userFound.TwoFactorAuth.ValueOrZero(),
 			twoFactorAuth,
 			userFound.TwoFactorTime.ValueOrZero())
@@ -134,6 +133,7 @@ func Generate2FAAndSendMail(c *gin.Context) {
 		return
 	}
 	foundUser, exists := services.UserExists(credentials.Email, credentials.Password)
+	processLoginAttempt(credentials.Email, exists, c)
 	if !exists {
 		sendJsonMsg(c, http.StatusNotFound, "Wrong credentials for: "+credentials.Email+". Please check the username and password are correct!")
 		return
@@ -151,6 +151,15 @@ func Generate2FAAndSendMail(c *gin.Context) {
 	c.JSON(http.StatusOK, models.ServerError{
 		Message: "Verification code sent correctly to " + credentials.Email + ". Check your inbox!",
 	})
+}
+
+func processLoginAttempt(email string, successful bool, c *gin.Context) error {
+	var attempt models.LoginAttempt
+	attempt.User.Email = email
+	attempt.UserAgent.SetValid(c.GetHeader(headers.UserAgent))
+	attempt.IP.SetValid(c.ClientIP())
+	attempt.Successful = successful
+	return services.ProcessLoginAttempt(&attempt)
 }
 
 func sendJsonMsg(c *gin.Context, status int, msg string) {
