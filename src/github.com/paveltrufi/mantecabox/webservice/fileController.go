@@ -1,13 +1,20 @@
 package webservice
 
 import (
-	"github.com/gin-gonic/gin"
+	"bytes"
+	"io"
+	"io/ioutil"
 	"net/http"
-	"fmt"
 	"os"
-	"github.com/labstack/gommon/log"
+
 	"github.com/appleboy/gin-jwt"
+	"github.com/gin-gonic/gin"
+	"github.com/labstack/gommon/log"
+	"github.com/paveltrufi/mantecabox/models"
+	"github.com/paveltrufi/mantecabox/services"
+	"github.com/paveltrufi/mantecabox/utilities/aes"
 )
+
 func CreateDirIfNotExist(dir string) bool {
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		err = os.MkdirAll(dir, 0755)
@@ -21,24 +28,68 @@ func CreateDirIfNotExist(dir string) bool {
 	return true
 }
 
-func UploadFile(c *gin.Context) {
+/*
+Función encargada de la subida y cifrado de los ficheros.
+ */
+func UploadFile(context *gin.Context) {
 
-	file, err := c.FormFile("file")
+	path := "./files/"
 
+	/*
+	Obtención del fichero desde el post
+	 */
+	file, header, err := context.Request.FormFile("file")
 	if err != nil {
-		c.String(http.StatusBadRequest, fmt.Sprintf("get form err: %s", err.Error()))
+		sendJsonMsg(context, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	username := jwt.ExtractClaims(c)["id"].(string)
-	path := "./files/" + username + "/"
-
+	/*
+	Comprobación o creación del directorio files
+	 */
 	if CreateDirIfNotExist(path) {
-		if err := c.SaveUploadedFile(file, path + file.Filename); err != nil {
-			c.String(http.StatusBadRequest, fmt.Sprintf("Upload file err: %s", err.Error()))
+		/*
+		- Obtención del username desde el token
+		- Creación del modelo de fichero que vamos a enviar a la base de datos
+		- Creación del fichero en la base de datos
+		 */
+		uploatedFile, error := services.CreateFile(&models.File {
+			Name:  header.Filename,
+			Owner: models.User{
+				Credentials: models.Credentials {
+					Email: jwt.ExtractClaims(context)["id"].(string),
+				}},
+		})
+		if error != nil {
+			sendJsonMsg(context, http.StatusBadRequest, error.Error())
 			return
 		}
 
-		c.String(http.StatusOK, fmt.Sprintf("File %s uploaded successfully with fields.", file.Filename))
+		/*
+		Conversión a bytes del fichero
+		 */
+		buf := bytes.NewBuffer(nil)
+		if _, err := io.Copy(buf, file); err != nil {
+			sendJsonMsg(context, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		/*
+		Encriptado del fichero
+		 */
+		encrypted := aes.Encrypt(buf.Bytes())
+
+		/*
+		Guardamos el fichero encriptado
+		 */
+		if err := ioutil.WriteFile(path + string(uploatedFile.Id), encrypted, 0755); err != nil {
+			sendJsonMsg(context, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		/*
+		Enviamos una respuesta positiva al cliente
+		 */
+		context.JSON(http.StatusCreated, uploatedFile)
 	}
 }
