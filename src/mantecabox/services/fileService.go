@@ -1,10 +1,10 @@
 package services
 
 import (
-	"github.com/paveltrufi/mantecabox/config"
-	"github.com/paveltrufi/mantecabox/dao/factory"
-	"github.com/paveltrufi/mantecabox/dao/interfaces"
-	"github.com/paveltrufi/mantecabox/models"
+	"mantecabox/config"
+	"mantecabox/dao/factory"
+	"mantecabox/dao/interfaces"
+	"mantecabox/models"
 )
 
 var (

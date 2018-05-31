@@ -13,9 +13,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-http-utils/headers"
 	"github.com/labstack/gommon/log"
-	"github.com/paveltrufi/mantecabox/models"
-	"github.com/paveltrufi/mantecabox/services"
-	"github.com/paveltrufi/mantecabox/utilities/aes"
+	"mantecabox/models"
+	"mantecabox/services"
+	"mantecabox/utilities/aes"
 )
 
 func CreateDirIfNotExist(dir string) bool {
@@ -152,7 +152,7 @@ func GetFile(context *gin.Context) {
 
 	reader := bytes.NewReader(fileDecrypt)
 	contentLength := reader.Size()
-	contentType := "applitacion/octet-stream"
+	contentType := "application/octet-stream"
 
 	extraHeaders := map[string]string {
 		headers.ContentDisposition:  `attachment; filename="` + file.Name + `"`,
