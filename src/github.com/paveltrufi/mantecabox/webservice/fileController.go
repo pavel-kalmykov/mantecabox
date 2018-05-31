@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/appleboy/gin-jwt"
 	"github.com/gin-gonic/gin"
@@ -82,7 +83,7 @@ func UploadFile(context *gin.Context) {
 		/*
 		Guardamos el fichero encriptado
 		 */
-		if err := ioutil.WriteFile(path + string(uploatedFile.Id), encrypted, 0755); err != nil {
+		if err := ioutil.WriteFile(path + strconv.FormatInt(uploatedFile.Id, 10), encrypted, 0755); err != nil {
 			sendJsonMsg(context, http.StatusBadRequest, err.Error())
 			return
 		}
