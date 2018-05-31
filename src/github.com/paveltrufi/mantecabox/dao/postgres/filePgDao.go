@@ -94,7 +94,7 @@ func (dao FilePgDao) Update(id int64, file *models.File) (models.File, error) {
 	var updatedFile models.File
 	err := db.QueryRow(`UPDATE files
 SET name            = $1,
-  owner             = $2,
+  owner             = $2
 WHERE id = $3
 RETURNING *`,
 		file.Name, file.Owner.Email, id,
