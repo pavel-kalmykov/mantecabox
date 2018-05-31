@@ -91,6 +91,6 @@ func UploadFile(context *gin.Context) {
 		/*
 		Enviamos una respuesta positiva al cliente
 		 */
-		context.JSON(http.StatusCreated, uploatedFile)
+		context.Writer.WriteHeader(http.StatusCreated)
 	}
 }
