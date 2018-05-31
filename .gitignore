@@ -17,6 +17,7 @@
 
 pkg
 bin
-/src/github.com/stretchr
-/src/github.com/lib
-/src/github.com/alexrudd
+/src/github.com/
+/src/golang.org/
+/src/gopkg.in/
+/src/launchpad.net/
