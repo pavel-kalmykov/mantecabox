@@ -31,10 +31,10 @@ VALUES ('testfile1a', 'testuser1'),
   ('testfile2a', 'testuser2'),
   ('testfile2b', 'testuser2');`,
 			[]models.File{
-				{Name: "testfile1a", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}, UserReadable: true, UserWritable: true, GroupReadable: true},
-				{Name: "testfile1b", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}, UserReadable: true, UserWritable: true, GroupReadable: true},
-				{Name: "testfile2a", Owner: models.User{Credentials: models.Credentials{Email: "testuser2", Password: "testpassword2"}}, UserReadable: true, UserWritable: true, GroupReadable: true},
-				{Name: "testfile2b", Owner: models.User{Credentials: models.Credentials{Email: "testuser2", Password: "testpassword2"}}, UserReadable: true, UserWritable: true, GroupReadable: true},
+				{Name: "testfile1a", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}},
+				{Name: "testfile1b", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}},
+				{Name: "testfile2a", Owner: models.User{Credentials: models.Credentials{Email: "testuser2", Password: "testpassword2"}}},
+				{Name: "testfile2b", Owner: models.User{Credentials: models.Credentials{Email: "testuser2", Password: "testpassword2"}}},
 			},
 		},
 		{
@@ -50,8 +50,8 @@ VALUES (NULL, 'testfile1a', 'testuser1'),
   (NULL, 'testfile2a', 'testuser2'),
   (NOW(), 'testfile2b', 'testuser2');`,
 			[]models.File{
-				{Name: "testfile1a", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}, UserReadable: true, UserWritable: true, GroupReadable: true},
-				{Name: "testfile2a", Owner: models.User{Credentials: models.Credentials{Email: "testuser2", Password: "testpassword2"}}, UserReadable: true, UserWritable: true, GroupReadable: true},
+				{Name: "testfile1a", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}},
+				{Name: "testfile2a", Owner: models.User{Credentials: models.Credentials{Email: "testuser2", Password: "testpassword2"}}},
 			},
 		},
 	}
@@ -108,7 +108,7 @@ func TestFilePgDao_GetByPk(t *testing.T) {
 			"When you ask for an existent file, retrieve it",
 			testFileInsertQuery,
 			args{},
-			models.File{Name: "testfile1a", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}, UserReadable: true, UserWritable: true, GroupReadable: true},
+			models.File{Name: "testfile1a", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}},
 			false,
 		},
 		{
@@ -149,8 +149,7 @@ func TestFilePgDao_GetByPk(t *testing.T) {
 }
 
 func TestFilePgDao_Create(t *testing.T) {
-	file := models.File{Name: "testfile", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}},
-		UserReadable: true, UserWritable: true, GroupReadable: true, GroupWritable: true}
+	file := models.File{Name: "testfile", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}}
 	fileWithoutName := file
 	fileWithoutName.Name = ""
 	fileWithoutOwner := file

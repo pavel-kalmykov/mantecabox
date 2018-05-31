@@ -29,11 +29,7 @@ WHERE f.deleted_at IS NULL AND u.deleted_at IS NULL `)
 	for rows.Next() {
 		var file models.File
 		var owner string
-		err := rows.Scan(&file.Id, &file.CreatedAt, &file.UpdatedAt, &file.DeletedAt, &file.Name, &owner, &file.Group,
-			&file.UserReadable, &file.UserWritable, &file.UserExecutable,
-			&file.GroupReadable, &file.GroupWritable, &file.GroupExecutable,
-			&file.OtherReadable, &file.OtherWritable, &file.OtherExecutable,
-			&file.PlatformCreation,
+		err := rows.Scan(&file.Id, &file.CreatedAt, &file.UpdatedAt, &file.DeletedAt, &file.Name, &owner,
 			&file.Owner.CreatedAt, &file.Owner.UpdatedAt, &file.Owner.DeletedAt, &file.Owner.Email, &file.Owner.Password, &file.Owner.TwoFactorAuth, &file.Owner.TwoFactorTime)
 		if err != nil {
 			log.Info("Unable to execute FilePgDao.GetAll() query. Reason:", err)
@@ -58,11 +54,7 @@ func (dao FilePgDao) GetByPk(id int64) (models.File, error) {
 FROM files f
   JOIN users u ON f.owner = u.email
 WHERE f.deleted_at IS NULL AND u.deleted_at IS NULL AND f.id = $1`, id).Scan(
-		&file.Id, &file.CreatedAt, &file.UpdatedAt, &file.DeletedAt, &file.Name, &owner, &file.Group,
-		&file.UserReadable, &file.UserWritable, &file.UserExecutable,
-		&file.GroupReadable, &file.GroupWritable, &file.GroupExecutable,
-		&file.OtherReadable, &file.OtherWritable, &file.OtherExecutable,
-		&file.PlatformCreation,
+		&file.Id, &file.CreatedAt, &file.UpdatedAt, &file.DeletedAt, &file.Name, &owner,
 		&file.Owner.CreatedAt, &file.Owner.UpdatedAt, &file.Owner.DeletedAt, &file.Owner.Email, &file.Owner.Password, &file.Owner.TwoFactorAuth, &file.Owner.TwoFactorTime)
 
 	if err != nil {
@@ -78,18 +70,10 @@ func (dao FilePgDao) Create(file *models.File) (models.File, error) {
 	defer db.Close()
 
 	var createdFile models.File
-	err := db.QueryRow(`INSERT INTO files (name, owner, "group", user_readable, user_writable, user_executable, group_readable, group_writable, group_executable, other_readable, other_writable, other_executable, platform_creation)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *;`, file.Name, file.Owner.Email, file.Group,
-		file.UserReadable, file.UserWritable, file.UserExecutable,
-		file.GroupReadable, file.GroupWritable, file.GroupExecutable,
-		file.OtherReadable, file.OtherWritable, file.OtherExecutable,
-		file.PlatformCreation,
+	err := db.QueryRow(`INSERT INTO files (name, owner)
+VALUES ($1, $2) RETURNING *;`, file.Name, file.Owner.Email,
 	).Scan(&createdFile.Id, &createdFile.CreatedAt, &createdFile.UpdatedAt, &createdFile.DeletedAt,
-		&createdFile.Name, &createdFile.Owner.Email, &createdFile.Group,
-		&createdFile.UserReadable, &createdFile.UserWritable, &createdFile.UserExecutable,
-		&createdFile.GroupReadable, &createdFile.GroupWritable, &createdFile.GroupExecutable,
-		&createdFile.OtherReadable, &createdFile.OtherWritable, &createdFile.OtherExecutable,
-		&createdFile.PlatformCreation)
+		&createdFile.Name, &createdFile.Owner.Email)
 
 	if err != nil {
 		log.Info("Unable to execute FilePgDao.Create(file models.File) query. Reason:", err)
@@ -111,30 +95,11 @@ func (dao FilePgDao) Update(id int64, file *models.File) (models.File, error) {
 	err := db.QueryRow(`UPDATE files
 SET name            = $1,
   owner             = $2,
-  "group"           = $3,
-  user_readable     = $4,
-  user_writable     = $5,
-  user_executable   = $6,
-  group_readable    = $7,
-  group_writable    = $8,
-  group_executable  = $9,
-  other_readable    = $10,
-  other_writable    = $11,
-  other_executable  = $12,
-  platform_creation = $13
-WHERE id = $14
+WHERE id = $3
 RETURNING *`,
-		file.Name, file.Owner.Email, file.Group,
-		file.UserReadable, file.UserWritable, file.UserExecutable,
-		file.GroupReadable, file.GroupWritable, file.GroupExecutable,
-		file.OtherReadable, file.OtherWritable, file.OtherExecutable,
-		file.PlatformCreation, id,
+		file.Name, file.Owner.Email, id,
 	).Scan(&updatedFile.Id, &updatedFile.CreatedAt, &updatedFile.UpdatedAt, &updatedFile.DeletedAt,
-		&updatedFile.Name, &updatedFile.Owner.Email, &updatedFile.Group,
-		&updatedFile.UserReadable, &updatedFile.UserWritable, &updatedFile.UserExecutable,
-		&updatedFile.GroupReadable, &updatedFile.GroupWritable, &updatedFile.GroupExecutable,
-		&updatedFile.OtherReadable, &updatedFile.OtherWritable, &updatedFile.OtherExecutable,
-		&updatedFile.PlatformCreation)
+		&updatedFile.Name, &updatedFile.Owner.Email)
 
 	if err != nil {
 		log.Info("Unable to execute FilePgDao.Update(id int64, file models.File) query. Reason:", err)
