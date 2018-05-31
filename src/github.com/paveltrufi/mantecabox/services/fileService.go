@@ -16,10 +16,14 @@ func init() {
 	fileDao = dao
 }
 
-func CreateFile(file *models.File) (models.File, error) {
+func CreateFile (file *models.File) (models.File, error) {
 	return fileDao.Create(file)
 }
 
 func DeleteFile (file int64) error {
 	return fileDao.Delete(file)
+}
+
+func DownloadFile (file int64) (models.File, error) {
+	return fileDao.GetByPk(file)
 }

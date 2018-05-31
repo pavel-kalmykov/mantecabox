@@ -11,6 +11,7 @@ import (
 
 	"github.com/appleboy/gin-jwt"
 	"github.com/gin-gonic/gin"
+	"github.com/go-http-utils/headers"
 	"github.com/labstack/gommon/log"
 	"github.com/paveltrufi/mantecabox/models"
 	"github.com/paveltrufi/mantecabox/services"
@@ -121,4 +122,41 @@ func DeleteFile (context *gin.Context) {
 	}
 
 	context.Writer.WriteHeader(http.StatusNoContent)
+}
+
+func GetFile(context *gin.Context) {
+	param := context.Param("file")
+
+	fileID, error := strconv.ParseInt(param, 10, 64)
+	if error != nil {
+		sendJsonMsg(context, http.StatusInternalServerError, error.Error())
+		return
+	}
+
+	file, err := services.DownloadFile(fileID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			sendJsonMsg(context, http.StatusNotFound, "Unable to find file: " + param)
+		} else {
+			sendJsonMsg(context, http.StatusInternalServerError, "Unable to find file: "+err.Error())
+		}
+
+		return
+	}
+
+	fileEncrypt, error := ioutil.ReadFile(path + param)
+
+	fileDecrypt := aes.Decrypt(fileEncrypt)
+
+
+
+	reader := bytes.NewReader(fileDecrypt)
+	contentLength := reader.Size()
+	contentType := "applitacion/octet-stream"
+
+	extraHeaders := map[string]string {
+		headers.ContentDisposition:  `attachment; filename="` + file.Name + `"`,
+	}
+
+	context.DataFromReader(http.StatusOK, contentLength, contentType, reader, extraHeaders)
 }

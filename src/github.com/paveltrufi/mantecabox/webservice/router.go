@@ -28,6 +28,7 @@ func Router(useJWT bool) *gin.Engine {
 		files.Use(AuthMiddleware.MiddlewareFunc())
 	}
 
+	files.GET("/:file", GetFile)
 	files.POST("", UploadFile)
 	files.DELETE("/:file", DeleteFile)
 
