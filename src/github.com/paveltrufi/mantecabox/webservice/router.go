@@ -29,6 +29,7 @@ func Router(useJWT bool) *gin.Engine {
 	}
 
 	files.POST("", UploadFile)
+	files.DELETE("/:file", DeleteFile)
 
 	return r
 }

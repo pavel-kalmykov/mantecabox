@@ -2,6 +2,7 @@ package webservice
 
 import (
 	"bytes"
+	"database/sql"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -29,13 +30,12 @@ func CreateDirIfNotExist(dir string) bool {
 	return true
 }
 
+var path = "./files/"
+
 /*
 Función encargada de la subida y cifrado de los ficheros.
  */
 func UploadFile(context *gin.Context) {
-
-	path := "./files/"
-
 	/*
 	Obtención del fichero desde el post
 	 */
@@ -93,4 +93,32 @@ func UploadFile(context *gin.Context) {
 		 */
 		context.Writer.WriteHeader(http.StatusCreated)
 	}
+}
+
+func DeleteFile (context *gin.Context) {
+	fileID := context.Param("file")
+
+	file, error := strconv.ParseInt(fileID, 10, 64)
+	if error != nil {
+		sendJsonMsg(context, http.StatusInternalServerError, error.Error())
+		return
+	}
+
+	err := services.DeleteFile(file)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			sendJsonMsg(context, http.StatusNotFound, "Unable to find file: " + fileID)
+		} else {
+			sendJsonMsg(context, http.StatusBadRequest, "Unable to delete file: "+err.Error())
+		}
+		return
+	}
+
+	error = os.Remove(path + fileID)
+	if error != nil {
+		sendJsonMsg(context, http.StatusInternalServerError, error.Error())
+		return
+	}
+
+	context.Writer.WriteHeader(http.StatusNoContent)
 }
