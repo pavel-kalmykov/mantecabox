@@ -36,6 +36,10 @@ func CreateDirIfNotExist() {
 	}
 }
 
+func GetAllFiles(user models.User) ([]models.File, error) {
+	return fileDao.GetAll(&user)
+}
+
 func CreateFile (file *models.File) (models.File, error) {
 	return fileDao.Create(file)
 }

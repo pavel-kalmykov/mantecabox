@@ -12,7 +12,7 @@ import (
 type FilePgDao struct {
 }
 
-func (dao FilePgDao) GetAll() ([]models.File, error) {
+func (dao FilePgDao) GetAll(user *models.User) ([]models.File, error) {
 	files := make([]models.File, 0)
 	db, err := database.GetPgDb()
 	defer db.Close()
@@ -22,7 +22,7 @@ func (dao FilePgDao) GetAll() ([]models.File, error) {
   u.*
 FROM files f
   JOIN users u ON f.owner = u.email
-WHERE f.deleted_at IS NULL AND u.deleted_at IS NULL`)
+WHERE f.deleted_at IS NULL AND u.deleted_at IS NULL AND u.email = $1`, user.Email)
 	if err != nil {
 		logrus.Info("Unable to execute FilePgDao.GetAll() query. Reason:", err)
 		return nil, err

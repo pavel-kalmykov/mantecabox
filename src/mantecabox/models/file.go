@@ -12,3 +12,7 @@ type FileDTO struct {
 	Name  string `json:"name"`
 	Owner string `json:"owner"`
 }
+
+type Files struct {
+	Name  string `json:"name"`
+}

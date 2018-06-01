@@ -12,6 +12,7 @@ import (
 	"mantecabox/services"
 	"mantecabox/utilities/aes"
 
+	"github.com/PeteProgrammer/go-automapper"
 	"github.com/appleboy/gin-jwt"
 	"github.com/gin-gonic/gin"
 	"github.com/go-http-utils/headers"
@@ -26,11 +27,7 @@ func UploadFile(context *gin.Context) {
 		return
 	}
 
-	// Obtención del username desde el token
-	var user models.User
-	user.Email = jwt.ExtractClaims(context)["id"].(string)
-
-	fileModel, err := checkSameFileExist(header.Filename, user)
+	fileModel, err := checkSameFileExist(header.Filename, getUser(context))
 	if err != nil {
 		if err != sql.ErrNoRows {
 			sendJsonMsg(context, http.StatusInternalServerError, "Unable to upload file: "+err.Error())
@@ -38,7 +35,7 @@ func UploadFile(context *gin.Context) {
 		}
 		fileModel, err = services.CreateFile(&models.File{
 			Name:  header.Filename,
-			Owner: user,
+			Owner: getUser(context),
 		})
 		if err != nil {
 			sendJsonMsg(context, http.StatusInternalServerError, err.Error())
@@ -95,12 +92,7 @@ func GetFile(context *gin.Context) {
 
 	filename := context.Param("file")
 
-	user := models.User{
-		Credentials: models.Credentials{
-			Email: jwt.ExtractClaims(context)["id"].(string),
-		}}
-
-	file, err := checkSameFileExist(filename, user)
+	file, err := checkSameFileExist(filename, getUser(context))
 	if err != nil {
 		if err == sql.ErrNoRows {
 			sendJsonMsg(context, http.StatusNotFound, "Unable to find file: "+filename)
@@ -129,6 +121,24 @@ func GetFile(context *gin.Context) {
 	context.DataFromReader(http.StatusOK, contentLength, contentType, reader, extraHeaders)
 }
 
+func getUser(context *gin.Context) models.User {
+	var user models.User
+	user.Email = jwt.ExtractClaims(context)["id"].(string)
+	return user
+}
+
 func checkSameFileExist(filename string, user models.User) (file models.File, err error) {
 	return services.GetFile(filename, &user)
+}
+
+func GetAllFiles(context *gin.Context) {
+	files, err := services.GetAllFiles(getUser(context))
+	if err != nil {
+		sendJsonMsg(context, http.StatusInternalServerError, "Unable to retrieve files: "+err.Error())
+		return
+	}
+
+	var dtos []models.Files
+	automapper.Map(files, &dtos)
+	context.JSON(http.StatusOK, dtos)
 }
