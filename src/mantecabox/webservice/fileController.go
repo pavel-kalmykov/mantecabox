@@ -3,7 +3,6 @@ package webservice
 import (
 	"bytes"
 	"database/sql"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -16,97 +15,63 @@ import (
 	"github.com/appleboy/gin-jwt"
 	"github.com/gin-gonic/gin"
 	"github.com/go-http-utils/headers"
-	"github.com/labstack/gommon/log"
 )
 
-func CreateDirIfNotExist(dir string) bool {
-	if _, err := os.Stat(dir); os.IsNotExist(err) {
-		err = os.MkdirAll(dir, 0755)
-		if err != nil {
-			log.Print("Error en la creación del directorio")
-			panic(err)
-			return false
-		}
-	}
-
-	return true
-}
-
-var path = "./files/"
-
-/*
-Función encargada de la subida y cifrado de los ficheros.
- */
+// UploadFile se encarga de la subida y cifrado de los ficheros.
 func UploadFile(context *gin.Context) {
-	/*
-	Obtención del fichero desde el post
-	 */
+	// Obtención del fichero desde el post
 	file, header, err := context.Request.FormFile("file")
 	if err != nil {
 		sendJsonMsg(context, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	/*
-	Comprobación o creación del directorio files
-	 */
-	if CreateDirIfNotExist(path) {
-		/*
-		- Obtención del username desde el token
-		- Creación del modelo de fichero que vamos a enviar a la base de datos
-		- Creación del fichero en la base de datos
-		 */
-		uploatedFile, error := services.CreateFile(&models.File{
-			Name: header.Filename,
-			Owner: models.User{
-				Credentials: models.Credentials{
-					Email: jwt.ExtractClaims(context)["id"].(string),
-				}},
+	// Obtención del username desde el token
+	var user models.User
+	user.Email = jwt.ExtractClaims(context)["id"].(string)
+
+	fileModel, err := checkSameFileExist(header.Filename, user)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			sendJsonMsg(context, http.StatusInternalServerError, "Unable to upload file: "+err.Error())
+			return
+		}
+		fileModel, err = services.CreateFile(&models.File{
+			Name:  header.Filename,
+			Owner: user,
 		})
-		if error != nil {
-			sendJsonMsg(context, http.StatusBadRequest, error.Error())
+		if err != nil {
+			sendJsonMsg(context, http.StatusInternalServerError, err.Error())
 			return
 		}
-
-		/*
-		Conversión a bytes del fichero
-		 */
-		buf := bytes.NewBuffer(nil)
-		if _, err := io.Copy(buf, file); err != nil {
-			sendJsonMsg(context, http.StatusBadRequest, err.Error())
+	} else {
+		fileModel, err = services.UpdateFile(fileModel.Id, fileModel)
+		if err != nil {
+			sendJsonMsg(context, http.StatusInternalServerError, err.Error())
 			return
 		}
-
-		/*
-		Encriptado del fichero
-		 */
-		encrypted := aes.Encrypt(buf.Bytes())
-
-		/*
-		Guardamos el fichero encriptado
-		 */
-		if err := ioutil.WriteFile(path+strconv.FormatInt(uploatedFile.Id, 10), encrypted, 0755); err != nil {
-			sendJsonMsg(context, http.StatusBadRequest, err.Error())
-			return
-		}
-
-		/*
-		Enviamos una respuesta positiva al cliente
-		 */
-		context.Writer.WriteHeader(http.StatusCreated)
 	}
+	err = services.SaveFile(file, fileModel)
+	if err != nil {
+		sendJsonMsg(context, http.StatusInternalServerError, err.Error())
+	}
+	context.JSON(http.StatusCreated, models.FileDTO{
+		Name:  fileModel.Name,
+		Owner: fileModel.Owner.Email,
+	})
 }
 
+// TODO mover cosas de negocio a la capa services
 func DeleteFile(context *gin.Context) {
 	fileID := context.Param("file")
 
-	file, error := strconv.ParseInt(fileID, 10, 64)
-	if error != nil {
-		sendJsonMsg(context, http.StatusInternalServerError, error.Error())
+	file, err := strconv.ParseInt(fileID, 10, 64)
+	if err != nil {
+		sendJsonMsg(context, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	err := services.DeleteFile(file)
+	err = services.DeleteFile(file)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			sendJsonMsg(context, http.StatusNotFound, "Unable to find file: "+fileID)
@@ -116,15 +81,16 @@ func DeleteFile(context *gin.Context) {
 		return
 	}
 
-	error = os.Remove(path + fileID)
-	if error != nil {
-		sendJsonMsg(context, http.StatusInternalServerError, error.Error())
+	err = os.Remove(services.Path + fileID)
+	if err != nil {
+		sendJsonMsg(context, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	context.Writer.WriteHeader(http.StatusNoContent)
 }
 
+// TODO mover cosas de negocio a la capa services
 func GetFile(context *gin.Context) {
 
 	filename := context.Param("file")
@@ -134,20 +100,19 @@ func GetFile(context *gin.Context) {
 			Email: jwt.ExtractClaims(context)["id"].(string),
 		}}
 
-	file, err := services.DownloadFile(filename, &user)
+	file, err := checkSameFileExist(filename, user)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			sendJsonMsg(context, http.StatusNotFound, "Unable to find file: "+filename)
 		} else {
 			sendJsonMsg(context, http.StatusInternalServerError, "Unable to find file: "+err.Error())
 		}
-
 		return
 	}
 
-	fileEncrypt, error := ioutil.ReadFile(path + strconv.FormatInt(file.Id, 10))
-	if error != nil {
-		sendJsonMsg(context, http.StatusInternalServerError, error.Error())
+	fileEncrypt, err := ioutil.ReadFile(services.Path + strconv.FormatInt(file.Id, 10))
+	if err != nil {
+		sendJsonMsg(context, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -162,4 +127,8 @@ func GetFile(context *gin.Context) {
 	}
 
 	context.DataFromReader(http.StatusOK, contentLength, contentType, reader, extraHeaders)
+}
+
+func checkSameFileExist(filename string, user models.User) (file models.File, err error) {
+	return services.GetFile(filename, &user)
 }
