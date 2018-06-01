@@ -24,6 +24,6 @@ func DeleteFile (file int64) error {
 	return fileDao.Delete(file)
 }
 
-func DownloadFile (file string, user *models.User) (models.File, error) {
-	return fileDao.GetByPk(file, user)
+func DownloadFile (filename string, user *models.User) (models.File, error) {
+	return fileDao.GetByPk(filename, user)
 }

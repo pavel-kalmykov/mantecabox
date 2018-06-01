@@ -9,15 +9,14 @@ import (
 	"os"
 	"strconv"
 
+	"mantecabox/models"
+	"mantecabox/services"
+	"mantecabox/utilities/aes"
+
 	"github.com/appleboy/gin-jwt"
 	"github.com/gin-gonic/gin"
 	"github.com/go-http-utils/headers"
 	"github.com/labstack/gommon/log"
-	"github.com/sirupsen/logrus"
-
-	"mantecabox/models"
-	"mantecabox/services"
-	"mantecabox/utilities/aes"
 )
 
 func CreateDirIfNotExist(dir string) bool {
@@ -128,19 +127,17 @@ func DeleteFile(context *gin.Context) {
 
 func GetFile(context *gin.Context) {
 
-	logrus.Info(context.ClientIP())
-
-	param := context.Param("file")
+	filename := context.Param("file")
 
 	user := models.User{
 		Credentials: models.Credentials{
 			Email: jwt.ExtractClaims(context)["id"].(string),
 		}}
 
-	file, err := services.DownloadFile(param, &user)
+	file, err := services.DownloadFile(filename, &user)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			sendJsonMsg(context, http.StatusNotFound, "Unable to find file: "+param)
+			sendJsonMsg(context, http.StatusNotFound, "Unable to find file: "+filename)
 		} else {
 			sendJsonMsg(context, http.StatusInternalServerError, "Unable to find file: "+err.Error())
 		}
