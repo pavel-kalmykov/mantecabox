@@ -44,7 +44,7 @@ WHERE f.deleted_at IS NULL AND u.deleted_at IS NULL`)
 	return files, err
 }
 
-func (dao FilePgDao) GetByPk(id int64) (models.File, error) {
+func (dao FilePgDao) GetByPk(filename string, user *models.User) (models.File, error) {
 	file := models.File{}
 	owner := ""
 	db, err := database.GetPgDb()
@@ -58,7 +58,7 @@ func (dao FilePgDao) GetByPk(id int64) (models.File, error) {
   u.*
 FROM files f
   JOIN users u ON f.owner = u.email
-WHERE f.deleted_at IS NULL AND u.deleted_at IS NULL AND f.id = $1`, id).Scan(
+WHERE f.deleted_at IS NULL AND u.deleted_at IS NULL AND f.name = $1 AND u.email = $2`, filename, user.Email).Scan(
 		&file.Id, &file.CreatedAt, &file.UpdatedAt, &file.DeletedAt, &file.Name, &owner,
 		&file.Owner.CreatedAt, &file.Owner.UpdatedAt, &file.Owner.DeletedAt, &file.Owner.Email, &file.Owner.Password, &file.Owner.TwoFactorAuth, &file.Owner.TwoFactorTime)
 

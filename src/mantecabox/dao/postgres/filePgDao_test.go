@@ -98,7 +98,8 @@ VALUES (NULL, 'testfile1a', 'testuser1'),
 
 func TestFilePgDao_GetByPk(t *testing.T) {
 	type args struct {
-		id int64
+		filename string
+		user     *models.User
 	}
 	testCases := []struct {
 		name        string
@@ -110,21 +111,21 @@ func TestFilePgDao_GetByPk(t *testing.T) {
 		{
 			"When you ask for an existent file, retrieve it",
 			testFileInsertQuery,
-			args{},
+			args{"testfile1a", &models.User{Credentials: models.Credentials{ Email: "testuser1"}}},
 			models.File{Name: "testfile1a", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}},
 			false,
 		},
 		{
 			"When you ask for an non-existent file, return an empty file and an error",
 			``,
-			args{id: -1},
+			args{"noexiste", &models.User{Credentials: models.Credentials{ Email: "noexiste"}}},
 			models.File{},
 			true,
 		},
 		{
 			"When you ask for a deleted file, return an empty file and an error",
 			`INSERT INTO files (deleted_at, name, owner) VALUES (NOW(), 'testfile1a', 'testuser1') RETURNING id;`,
-			args{},
+			args{"testfile1a", &models.User{Credentials: models.Credentials{ Email: "testuser1"}}},
 			models.File{},
 			true,
 		},
@@ -134,18 +135,10 @@ func TestFilePgDao_GetByPk(t *testing.T) {
 	defer db.Close()
 
 	for _, testCase := range testCases {
-		cleanAndPopulateDb(db, testUsersInsertQuery, t)
-		if testCase.insertQuery != "" {
-			db.QueryRow(testCase.insertQuery).Scan(&testCase.want.Id)
-			if testCase.wantErr {
-				testCase.want.Id = 0
-			} else {
-				testCase.args.id = testCase.want.Id
-			}
-		}
+		cleanAndPopulateDb(db, testUsersInsertQuery + testCase.insertQuery, t)
 		t.Run(testCase.name, func(t *testing.T) {
 			dao := FilePgDao{}
-			got, err := dao.GetByPk(testCase.args.id)
+			got, err := dao.GetByPk(testCase.args.filename, testCase.args.user)
 			requireFileEqualCheckingErrors(t, testCase.wantErr, err, testCase.want, got)
 		})
 	}
@@ -344,16 +337,14 @@ func requireFileEqualCheckingErrors(t *testing.T, wantErr bool, err error, expec
 		updatedAtDate := date.FromTime(actual.UpdatedAt.Time)
 		require.True(t, createdAtDate.Within(date.SingleDay(createdAtDate)))
 		require.True(t, updatedAtDate.Within(date.SingleDay(updatedAtDate)))
-		actual.CreatedAt = null.Time{}
-		actual.UpdatedAt = null.Time{}
 
 		// same for owners
 		createdAtDate = date.FromTime(actual.Owner.CreatedAt.Time)
 		updatedAtDate = date.FromTime(actual.Owner.UpdatedAt.Time)
 		require.True(t, createdAtDate.Within(date.SingleDay(createdAtDate)))
 		require.True(t, updatedAtDate.Within(date.SingleDay(updatedAtDate)))
-		actual.Owner.CreatedAt = null.Time{}
-		actual.Owner.UpdatedAt = null.Time{}
 	}
-	require.Equal(t, expected, actual)
+	require.Equal(t, expected.Name, actual.Name)
+	require.Equal(t, expected.Owner.Email, actual.Owner.Email)
+	require.Equal(t, expected.Owner.Password, actual.Owner.Password)
 }

@@ -13,6 +13,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/go-http-utils/headers"
 	"github.com/labstack/gommon/log"
+	"github.com/sirupsen/logrus"
+
 	"mantecabox/models"
 	"mantecabox/services"
 	"mantecabox/utilities/aes"
@@ -55,10 +57,10 @@ func UploadFile(context *gin.Context) {
 		- Creación del modelo de fichero que vamos a enviar a la base de datos
 		- Creación del fichero en la base de datos
 		 */
-		uploatedFile, error := services.CreateFile(&models.File {
-			Name:  header.Filename,
+		uploatedFile, error := services.CreateFile(&models.File{
+			Name: header.Filename,
 			Owner: models.User{
-				Credentials: models.Credentials {
+				Credentials: models.Credentials{
 					Email: jwt.ExtractClaims(context)["id"].(string),
 				}},
 		})
@@ -84,7 +86,7 @@ func UploadFile(context *gin.Context) {
 		/*
 		Guardamos el fichero encriptado
 		 */
-		if err := ioutil.WriteFile(path + strconv.FormatInt(uploatedFile.Id, 10), encrypted, 0755); err != nil {
+		if err := ioutil.WriteFile(path+strconv.FormatInt(uploatedFile.Id, 10), encrypted, 0755); err != nil {
 			sendJsonMsg(context, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -96,7 +98,7 @@ func UploadFile(context *gin.Context) {
 	}
 }
 
-func DeleteFile (context *gin.Context) {
+func DeleteFile(context *gin.Context) {
 	fileID := context.Param("file")
 
 	file, error := strconv.ParseInt(fileID, 10, 64)
@@ -108,7 +110,7 @@ func DeleteFile (context *gin.Context) {
 	err := services.DeleteFile(file)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			sendJsonMsg(context, http.StatusNotFound, "Unable to find file: " + fileID)
+			sendJsonMsg(context, http.StatusNotFound, "Unable to find file: "+fileID)
 		} else {
 			sendJsonMsg(context, http.StatusBadRequest, "Unable to delete file: "+err.Error())
 		}
@@ -125,18 +127,20 @@ func DeleteFile (context *gin.Context) {
 }
 
 func GetFile(context *gin.Context) {
+
+	logrus.Info(context.ClientIP())
+
 	param := context.Param("file")
 
-	fileID, error := strconv.ParseInt(param, 10, 64)
-	if error != nil {
-		sendJsonMsg(context, http.StatusInternalServerError, error.Error())
-		return
-	}
+	user := models.User{
+		Credentials: models.Credentials{
+			Email: jwt.ExtractClaims(context)["id"].(string),
+		}}
 
-	file, err := services.DownloadFile(fileID)
+	file, err := services.DownloadFile(param, &user)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			sendJsonMsg(context, http.StatusNotFound, "Unable to find file: " + param)
+			sendJsonMsg(context, http.StatusNotFound, "Unable to find file: "+param)
 		} else {
 			sendJsonMsg(context, http.StatusInternalServerError, "Unable to find file: "+err.Error())
 		}
@@ -144,18 +148,20 @@ func GetFile(context *gin.Context) {
 		return
 	}
 
-	fileEncrypt, error := ioutil.ReadFile(path + param)
+	fileEncrypt, error := ioutil.ReadFile(path + strconv.FormatInt(file.Id, 10))
+	if error != nil {
+		sendJsonMsg(context, http.StatusInternalServerError, error.Error())
+		return
+	}
 
 	fileDecrypt := aes.Decrypt(fileEncrypt)
-
-
 
 	reader := bytes.NewReader(fileDecrypt)
 	contentLength := reader.Size()
 	contentType := "application/octet-stream"
 
-	extraHeaders := map[string]string {
-		headers.ContentDisposition:  `attachment; filename="` + file.Name + `"`,
+	extraHeaders := map[string]string{
+		headers.ContentDisposition: `attachment; filename="` + file.Name + `"`,
 	}
 
 	context.DataFromReader(http.StatusOK, contentLength, contentType, reader, extraHeaders)
