@@ -15,6 +15,9 @@ func main() {
 		logrus.Fatal(fmt.Sprintf("Unable to read configuration file: %v", err))
 		return
 	}
-	r := webservice.Router(true)
+	r := webservice.Router(true, &config)
+	if r == nil {
+
+	}
 	r.RunTLS(fmt.Sprintf(":%v", config.Server.Port), config.Server.Cert, config.Server.Key)
 }

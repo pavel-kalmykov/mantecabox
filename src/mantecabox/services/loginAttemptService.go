@@ -16,15 +16,39 @@ import (
 
 const (
 	MaxUnsuccessfulAttempts = 3
+	timeLimit               = time.Minute * 5
 )
 
 var (
 	loginAttemptDao    = postgres.LoginAttemptPgDao{}
 	TooManyAttemptsErr = errors.New("too many unsuccessful login attemtps")
-	timeLimit          = time.Minute * 5
 )
 
-func ProcessLoginAttempt(attempt *models.LoginAttempt) error {
+type (
+	LoginAttemptService interface {
+		ProcessLoginAttempt(attempt *models.LoginAttempt) error
+		sendNewRegisteredDeviceActivity(attempt *models.LoginAttempt) error
+		sendSuspiciousActivityReport(unsuccessfulAttempt *models.LoginAttempt) error
+	}
+
+	LoginAttemptServiceImpl struct {
+		configuration *models.Configuration
+		mailService   MailService
+	}
+)
+
+func NewLoginAttemptService(configuration *models.Configuration) LoginAttemptService {
+	mailService := NewMailService(configuration)
+	if mailService == nil {
+		return nil
+	}
+	return LoginAttemptServiceImpl{
+		configuration: configuration,
+		mailService:   mailService,
+	}
+}
+
+func (loginAttemptService LoginAttemptServiceImpl) ProcessLoginAttempt(attempt *models.LoginAttempt) error {
 	createdAttempt, err := loginAttemptDao.Create(attempt)
 	if err != nil {
 		return err
@@ -39,7 +63,7 @@ func ProcessLoginAttempt(attempt *models.LoginAttempt) error {
 	}).([]models.LoginAttempt)
 	if len(unsuccessfulAttempts) >= MaxUnsuccessfulAttempts && len(attempts)-len(unsuccessfulAttempts) == 0 {
 		go func() {
-			sendSuspiciousActivityReport(&createdAttempt) // Very slow, run in background
+			loginAttemptService.sendSuspiciousActivityReport(&createdAttempt) // Very slow, run in background
 		}()
 		return TooManyAttemptsErr
 	}
@@ -53,23 +77,23 @@ func ProcessLoginAttempt(attempt *models.LoginAttempt) error {
 	}
 	if len(similarAttempts) == 1 {
 		go func() {
-			sendNewRegisteredDeviceActivity(&createdAttempt) // Very slow, run in background
+			loginAttemptService.sendNewRegisteredDeviceActivity(&createdAttempt) // Very slow, run in background
 		}()
 	}
 	return nil
 }
 
-func sendNewRegisteredDeviceActivity(attempt *models.LoginAttempt) error {
+func (loginAttemptService LoginAttemptServiceImpl) sendNewRegisteredDeviceActivity(attempt *models.LoginAttempt) error {
 	messageBody := fmt.Sprintf("<strong>A new device has been registered in your account (%v)</strong><br>", attempt.User.Email)
 	msg, err := formatAttempt(attempt)
 	if err != nil {
 		return err
 	}
 	messageBody += msg
-	return SendMail(attempt.User.Email, messageBody)
+	return loginAttemptService.mailService.SendMail(attempt.User.Email, messageBody)
 }
 
-func sendSuspiciousActivityReport(unsuccessfulAttempt *models.LoginAttempt) error {
+func (loginAttemptService LoginAttemptServiceImpl) sendSuspiciousActivityReport(unsuccessfulAttempt *models.LoginAttempt) error {
 	email := unsuccessfulAttempt.User.Email
 	messageBody := fmt.Sprintf("<strong>We have detected a suspiciuous activity in your account (%v)</strong><br>", email)
 	msg, err := formatAttempt(unsuccessfulAttempt)
@@ -77,7 +101,7 @@ func sendSuspiciousActivityReport(unsuccessfulAttempt *models.LoginAttempt) erro
 		return err
 	}
 	messageBody += msg
-	return SendMail(email, messageBody)
+	return loginAttemptService.mailService.SendMail(email, messageBody)
 }
 
 func formatAttempt(attempt *models.LoginAttempt) (string, error) {

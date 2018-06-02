@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"mantecabox/dao/interfaces"
 	"mantecabox/database"
 	"mantecabox/services"
 	"mantecabox/utilities/aes"
@@ -17,6 +18,7 @@ import (
 	"github.com/buger/jsonparser"
 	"github.com/gin-gonic/gin"
 	"github.com/go-http-utils/headers"
+	"github.com/sirupsen/logrus"
 	"gopkg.in/dgrijalva/jwt-go.v3"
 
 	"mantecabox/dao/factory"
@@ -35,9 +37,10 @@ const (
 )
 
 var (
-	userDao         = factory.UserDaoFactory("postgres")
-	secureRouter    = Router(true)
-	router          = Router(false)
+	testUserService services.UserService
+	userDao         interfaces.UserDao
+	router          *gin.Engine
+	secureRouter    *gin.Engine
 	tokenParserFunc = func(token *jwt.Token) (interface{}, error) {
 		return aes.Key, nil
 	}
@@ -56,7 +59,14 @@ type authResponse struct {
 
 func TestMain(m *testing.M) {
 	utilities.StartDockerPostgresDb()
-
+	configuration, err := utilities.GetConfiguration()
+	if err != nil {
+		logrus.Fatal("Unable to open config file", err)
+	}
+	testUserService = services.NewUserService(&configuration)
+	userDao = factory.UserDaoFactory(configuration.Database.Engine)
+	router = Router(false, &configuration)
+	secureRouter = Router(true, &configuration)
 	code := m.Run()
 
 	db, err := database.GetPgDb()
@@ -473,12 +483,12 @@ func TestJWTRouter(t *testing.T) {
 	}
 	for _, tt := range tests {
 		cleanDb(db)
-		user, err := services.RegisterUser(&models.Credentials{
+		user, err := testUserService.RegisterUser(&models.Credentials{
 			Email:    testUserEmail,
 			Password: correctPassword,
 		})
 		require.NoError(t, err)
-		_, err = services.Generate2FACodeAndSaveToUser(&user)
+		_, err = testUserService.Generate2FACodeAndSaveToUser(&user)
 		require.NoError(t, err)
 		t.Run(tt.name, tt.test)
 	}
@@ -531,12 +541,12 @@ func TestGenerate2FAAndSendMail(t *testing.T) {
 	}
 	for _, tt := range tests {
 		cleanDb(db)
-		user, err := services.RegisterUser(&models.Credentials{
+		user, err := testUserService.RegisterUser(&models.Credentials{
 			Email:    testUserRealEmail,
 			Password: correctPassword,
 		})
 		require.NoError(t, err)
-		_, err = services.Generate2FACodeAndSaveToUser(&user)
+		_, err = testUserService.Generate2FACodeAndSaveToUser(&user)
 		require.NoError(t, err)
 		t.Run(tt.name, tt.test)
 	}
@@ -579,4 +589,31 @@ func getDb(t *testing.T) *sql.DB {
 
 func cleanDb(db *sql.DB) {
 	db.Exec("DELETE FROM users")
+}
+
+func TestNewUserController(t *testing.T) {
+	type args struct {
+		configuration *models.Configuration
+	}
+	testCases := []struct {
+		name string
+		args args
+		want UserController
+	}{
+		{
+			name: "When passing the configuration, return the service",
+			args: args{configuration: &models.Configuration{}},
+			want: UserControllerImpl{},
+		},
+		{
+			name: "When passing no configuration, return nil",
+			args: args{configuration: nil},
+			want: nil,
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			require.IsType(t, testCase.want, NewUserController(testCase.args.configuration))
+		})
+	}
 }

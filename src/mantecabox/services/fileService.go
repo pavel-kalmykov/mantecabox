@@ -23,29 +23,47 @@ var (
 	path    = "./files/"
 )
 
+type (
+	FileService interface {
+		GetAllFiles(user models.User) ([]models.File, error)
+		CreateFile(file *models.File) (models.File, error)
+		DeleteFile(file int64, fileID string) error
+		GetFile(filename string, user *models.User) (models.File, error)
+		UpdateFile(id int64, file models.File) (models.File, error)
+		SaveFile(file multipart.File, uploadedFile models.File) error
+		GetDecryptedLocalFile(file models.File) ([]byte, error)
+		GetFileStream(fileDecrypt []byte, file models.File) (contentLength int64, contentType string, reader *bytes.Reader, extraHeaders map[string]string)
+	}
+
+	FileServiceImpl struct {
+		configuration *models.Configuration
+	}
+)
+
 func init() {
 	dao := factory.FileDaoFactory("postgres")
 	fileDao = dao
-	CreateDirIfNotExist()
+	createDirIfNotExist()
 }
 
-func CreateDirIfNotExist() {
-	err := os.MkdirAll(path, 0600)
-	if err != nil {
-		logrus.Print("Error en la creación del directorio")
-		panic(err)
+func NewFileService(configuration *models.Configuration) FileService {
+	if configuration == nil {
+		return nil
+	}
+	return FileServiceImpl{
+		configuration: configuration,
 	}
 }
 
-func GetAllFiles(user models.User) ([]models.File, error) {
+func (fileService FileServiceImpl) GetAllFiles(user models.User) ([]models.File, error) {
 	return fileDao.GetAll(&user)
 }
 
-func CreateFile(file *models.File) (models.File, error) {
+func (fileService FileServiceImpl) CreateFile(file *models.File) (models.File, error) {
 	return fileDao.Create(file)
 }
 
-func DeleteFile(file int64, fileID string) error {
+func (fileService FileServiceImpl) DeleteFile(file int64, fileID string) error {
 
 	err := fileDao.Delete(file)
 	if err != nil {
@@ -60,15 +78,15 @@ func DeleteFile(file int64, fileID string) error {
 	return err
 }
 
-func GetFile(filename string, user *models.User) (models.File, error) {
+func (fileService FileServiceImpl) GetFile(filename string, user *models.User) (models.File, error) {
 	return fileDao.GetByPk(filename, user)
 }
 
-func UpdateFile(id int64, file models.File) (models.File, error) {
+func (fileService FileServiceImpl) UpdateFile(id int64, file models.File) (models.File, error) {
 	return fileDao.Update(id, &file)
 }
 
-func SaveFile(file multipart.File, uploadedFile models.File) error {
+func (fileService FileServiceImpl) SaveFile(file multipart.File, uploadedFile models.File) error {
 	// Conversión a bytes del fichero
 	buf := bytes.NewBuffer(nil)
 	if _, err := io.Copy(buf, file); err != nil {
@@ -82,7 +100,7 @@ func SaveFile(file multipart.File, uploadedFile models.File) error {
 	return nil
 }
 
-func GetDecryptedLocalFile(file models.File) ([]byte, error) {
+func (fileService FileServiceImpl) GetDecryptedLocalFile(file models.File) ([]byte, error) {
 	fileEncrypt, err := ioutil.ReadFile(path + strconv.FormatInt(file.Id, 10))
 	if err != nil {
 		return nil, err
@@ -91,7 +109,7 @@ func GetDecryptedLocalFile(file models.File) ([]byte, error) {
 	return aes.Decrypt(fileEncrypt), err
 }
 
-func GetFileStream(fileDecrypt []byte, file models.File) (contentLength int64, contentType string, reader *bytes.Reader, extraHeaders map[string]string) {
+func (fileService FileServiceImpl) GetFileStream(fileDecrypt []byte, file models.File) (contentLength int64, contentType string, reader *bytes.Reader, extraHeaders map[string]string) {
 	reader = bytes.NewReader(fileDecrypt)
 	contentLength = reader.Size()
 	contentType = http.DetectContentType(fileDecrypt)
@@ -101,4 +119,12 @@ func GetFileStream(fileDecrypt []byte, file models.File) (contentLength int64, c
 	}
 
 	return
+}
+
+func createDirIfNotExist() {
+	err := os.MkdirAll(path, 0600)
+	if err != nil {
+		logrus.Print("Error en la creación del directorio")
+		panic(err)
+	}
 }

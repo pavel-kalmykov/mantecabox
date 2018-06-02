@@ -35,48 +35,48 @@ func TestProcessLoginAttempt(t *testing.T) {
 		{
 			name: "When user has three unsuccessful login attempts, at the fourth one return an error",
 			test: func(t *testing.T) {
-				userDao.Create(&unsuccessfulAttempt.User)
+				testUserService.UserDao().Create(&unsuccessfulAttempt.User)
 
 				for i := 0; i < 3; i++ {
-					err := ProcessLoginAttempt(&successfulAttempt)
+					err := testLoginAttemptService.ProcessLoginAttempt(&successfulAttempt)
 					require.NoError(t, err)
 				}
-				err := ProcessLoginAttempt(&unsuccessfulAttempt)
+				err := testLoginAttemptService.ProcessLoginAttempt(&unsuccessfulAttempt)
 				require.NoError(t, err)
-				err = ProcessLoginAttempt(&unsuccessfulAttempt)
+				err = testLoginAttemptService.ProcessLoginAttempt(&unsuccessfulAttempt)
 				require.NoError(t, err)
-				err = ProcessLoginAttempt(&unsuccessfulAttempt)
+				err = testLoginAttemptService.ProcessLoginAttempt(&unsuccessfulAttempt)
 				require.Error(t, err)
-				err = ProcessLoginAttempt(&unsuccessfulAttempt)
+				err = testLoginAttemptService.ProcessLoginAttempt(&unsuccessfulAttempt)
 				require.Equal(t, TooManyAttemptsErr, err)
 			},
 		},
 		{
 			name: "When user has three unsuccessful login attempts, and then one successful, return an error",
 			test: func(t *testing.T) {
-				userDao.Create(&unsuccessfulAttempt.User)
+				testUserService.UserDao().Create(&unsuccessfulAttempt.User)
 
 				for i := 0; i < 3; i++ {
-					err := ProcessLoginAttempt(&successfulAttempt)
+					err := testLoginAttemptService.ProcessLoginAttempt(&successfulAttempt)
 					require.NoError(t, err)
 				}
-				err := ProcessLoginAttempt(&unsuccessfulAttempt)
+				err := testLoginAttemptService.ProcessLoginAttempt(&unsuccessfulAttempt)
 				require.NoError(t, err)
-				err = ProcessLoginAttempt(&unsuccessfulAttempt)
+				err = testLoginAttemptService.ProcessLoginAttempt(&unsuccessfulAttempt)
 				require.NoError(t, err)
-				err = ProcessLoginAttempt(&unsuccessfulAttempt)
+				err = testLoginAttemptService.ProcessLoginAttempt(&unsuccessfulAttempt)
 				require.Error(t, err)
-				err = ProcessLoginAttempt(&successfulAttempt)
+				err = testLoginAttemptService.ProcessLoginAttempt(&successfulAttempt)
 				require.Equal(t, errors.New(fmt.Sprintf("Login for user %v blocked for the next %.2f minutes", successfulAttempt.User.Email, timeLimit.Minutes())), err)
 			},
 		},
 		{
 			name: "When user has three successful login attempts, don't return any error at any of them",
 			test: func(t *testing.T) {
-				userDao.Create(&successfulAttempt.User)
+				testUserService.UserDao().Create(&successfulAttempt.User)
 
 				for i := 0; i < 3; i++ {
-					err := ProcessLoginAttempt(&successfulAttempt)
+					err := testLoginAttemptService.ProcessLoginAttempt(&successfulAttempt)
 					require.NoError(t, err)
 				}
 			},
@@ -99,8 +99,8 @@ func Test_sendNewRegisteredDeviceActivity(t *testing.T) {
 		{
 			name: "When sending a new device report, no error must be returned",
 			test: func(t *testing.T) {
-				userDao.Create(&successfulAttempt.User)
-				err := sendNewRegisteredDeviceActivity(&successfulAttempt)
+				testUserService.UserDao().Create(&successfulAttempt.User)
+				err := testLoginAttemptService.sendNewRegisteredDeviceActivity(&successfulAttempt)
 				require.NoError(t, err)
 			},
 		},
@@ -109,8 +109,8 @@ func Test_sendNewRegisteredDeviceActivity(t *testing.T) {
 			test: func(t *testing.T) {
 				attemptWithoutUserAgent := successfulAttempt
 				attemptWithoutUserAgent.UserAgent = null.String{}
-				userDao.Create(&attemptWithoutUserAgent.User)
-				err := sendNewRegisteredDeviceActivity(&attemptWithoutUserAgent)
+				testUserService.UserDao().Create(&attemptWithoutUserAgent.User)
+				err := testLoginAttemptService.sendNewRegisteredDeviceActivity(&attemptWithoutUserAgent)
 				require.NoError(t, err)
 			},
 		},
@@ -119,8 +119,8 @@ func Test_sendNewRegisteredDeviceActivity(t *testing.T) {
 			test: func(t *testing.T) {
 				attemptWithoutUserAgent := successfulAttempt
 				attemptWithoutUserAgent.IP = null.String{}
-				userDao.Create(&attemptWithoutUserAgent.User)
-				err := sendNewRegisteredDeviceActivity(&attemptWithoutUserAgent)
+				testUserService.UserDao().Create(&attemptWithoutUserAgent.User)
+				err := testLoginAttemptService.sendNewRegisteredDeviceActivity(&attemptWithoutUserAgent)
 				require.NoError(t, err)
 			},
 		},
@@ -140,8 +140,8 @@ func Test_sendSuspiciousActivityReport(t *testing.T) {
 		{
 			name: "When sending a suspicious activity report, no error must be returned",
 			test: func(t *testing.T) {
-				userDao.Create(&successfulAttempt.User)
-				err := sendSuspiciousActivityReport(&unsuccessfulAttempt)
+				testUserService.UserDao().Create(&successfulAttempt.User)
+				err := testLoginAttemptService.sendSuspiciousActivityReport(&unsuccessfulAttempt)
 				require.NoError(t, err)
 			},
 		},
@@ -150,5 +150,32 @@ func Test_sendSuspiciousActivityReport(t *testing.T) {
 		db := getDb(t)
 		cleanDb(db)
 		t.Run(testCase.name, testCase.test)
+	}
+}
+
+func TestNewLoginAttemptService(t *testing.T) {
+	type args struct {
+		configuration *models.Configuration
+	}
+	testCases := []struct {
+		name string
+		args args
+		want LoginAttemptService
+	}{
+		{
+			name: "When passing the configuration, return the service",
+			args: args{configuration: &models.Configuration{}},
+			want: LoginAttemptServiceImpl{},
+		},
+		{
+			name: "When passing no configuration, return nil",
+			args: args{configuration: nil},
+			want: nil,
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			require.IsType(t, testCase.want, NewLoginAttemptService(testCase.args.configuration))
+		})
 	}
 }
