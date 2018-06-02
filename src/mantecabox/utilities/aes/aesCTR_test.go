@@ -1,6 +1,7 @@
 package aes
 
 import (
+	"bytes"
 	"io/ioutil"
 	"testing"
 
@@ -18,7 +19,7 @@ func TestExampleNewCTR(t *testing.T) {
 }
 
 func TestFileNewCTR(t *testing.T) {
-	testFile, err := ioutil.ReadFile("/Users/raul/Go/mantecabox/files/raul_pairo@icloud.com/Calendario.pdf")
+	testFile, err := ioutil.ReadAll(bytes.NewReader([]byte("Fichero inventado de Mantecabox")))
 	require.NoError(t, err)
 	encrypted := Encrypt(testFile)
 	decrypted := Decrypt(encrypted)

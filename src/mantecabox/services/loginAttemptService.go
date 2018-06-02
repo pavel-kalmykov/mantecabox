@@ -6,7 +6,7 @@ import (
 	"net"
 	"time"
 
-	"mantecabox/dao/factory"
+	"mantecabox/dao/postgres"
 	"mantecabox/models"
 
 	"github.com/benashford/go-func"
@@ -19,7 +19,7 @@ const (
 )
 
 var (
-	loginAttemptDao    = factory.LoginAttemptFactory(configuration.Engine)
+	loginAttemptDao    = postgres.LoginAttemptPgDao{}
 	TooManyAttemptsErr = errors.New("too many unsuccessful login attemtps")
 	timeLimit          = time.Minute * 5
 )

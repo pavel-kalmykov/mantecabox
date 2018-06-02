@@ -5,10 +5,10 @@ import (
 	"io"
 	"io/ioutil"
 	"mime/multipart"
+	"net/http"
 	"os"
 	"strconv"
 
-	"mantecabox/config"
 	"mantecabox/dao/factory"
 	"mantecabox/dao/interfaces"
 	"mantecabox/models"
@@ -24,7 +24,7 @@ var (
 )
 
 func init() {
-	dao := factory.FileDaoFactory(config.GetServerConf().Engine)
+	dao := factory.FileDaoFactory("postgres")
 	fileDao = dao
 	CreateDirIfNotExist()
 }
@@ -41,11 +41,11 @@ func GetAllFiles(user models.User) ([]models.File, error) {
 	return fileDao.GetAll(&user)
 }
 
-func CreateFile (file *models.File) (models.File, error) {
+func CreateFile(file *models.File) (models.File, error) {
 	return fileDao.Create(file)
 }
 
-func DeleteFile (file int64, fileID string) error {
+func DeleteFile(file int64, fileID string) error {
 
 	err := fileDao.Delete(file)
 	if err != nil {
@@ -94,7 +94,7 @@ func GetDecryptedLocalFile(file models.File) ([]byte, error) {
 func GetFileStream(fileDecrypt []byte, file models.File) (contentLength int64, contentType string, reader *bytes.Reader, extraHeaders map[string]string) {
 	reader = bytes.NewReader(fileDecrypt)
 	contentLength = reader.Size()
-	contentType = "application/octet-stream"
+	contentType = http.DetectContentType(fileDecrypt)
 
 	extraHeaders = map[string]string{
 		headers.ContentDisposition: `attachment; filename="` + file.Name + `"`,

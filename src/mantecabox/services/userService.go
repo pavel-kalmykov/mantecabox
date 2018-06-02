@@ -9,9 +9,9 @@ import (
 	"regexp"
 	"time"
 
-	"mantecabox/config"
-	"mantecabox/dao/factory"
+	"mantecabox/dao/postgres"
 	"mantecabox/models"
+	"mantecabox/utilities"
 	"mantecabox/utilities/aes"
 
 	"github.com/badoux/checkmail"
@@ -21,8 +21,8 @@ import (
 
 var (
 	sha512Regex          *regexp.Regexp
-	configuration        = config.GetServerConf()
-	userDao              = factory.UserDaoFactory(configuration.Engine)
+	configuration        = models.Configuration{}
+	userDao              = postgres.UserPgDao{}
 	InvalidEmailError    = errors.New("invalid email")
 	InvalidPasswordError = errors.New("password input is not SHA-512 hashed")
 	Generating2FAError   = errors.New("unable to generate a 2FA secure code")
@@ -35,6 +35,7 @@ func init() {
 		panic(err)
 	}
 	sha512Regex = sha512Compile
+	configuration, err = utilities.GetConfiguration()
 }
 
 func GetUsers() ([]models.User, error) {

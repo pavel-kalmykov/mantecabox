@@ -1,7 +1,0 @@
-{
-  "port": "10443",
-  "certificates": {
-    "cert": "cert.pem",
-    "key": "key.pem"
-  }
-}

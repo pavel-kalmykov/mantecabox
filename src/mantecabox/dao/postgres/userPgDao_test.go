@@ -7,7 +7,6 @@ import (
 
 	"mantecabox/database"
 	"mantecabox/models"
-	"mantecabox/utilities"
 
 	"github.com/aodin/date"
 	"github.com/gin-gonic/gin/json"
@@ -19,14 +18,12 @@ import (
 const testUserInsert = `INSERT INTO users (email, password) VALUES ('testuser1', 'testpassword1');`
 
 func TestMain(m *testing.M) {
-	utilities.StartDockerPostgresDb()
-	os.Setenv("MANTECABOX_CONFIG_FILE", "configuration.test.json")
-
 	code := m.Run()
 
 	db, err := database.GetPgDb()
 	if err != nil {
 		logrus.Fatal("Unable to connnect with database: " + err.Error())
+		os.Exit(-1)
 	}
 	cleanDb(db)
 	os.Exit(code)
@@ -344,6 +341,7 @@ func getDb(t *testing.T) *sql.DB {
 		logrus.Fatal("Unable to connnect with database: " + err.Error())
 	}
 	require.NotNil(t, db)
+	require.NoError(t, err)
 	return db
 }
 

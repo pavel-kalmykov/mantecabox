@@ -15,6 +15,10 @@ type FilePgDao struct {
 func (dao FilePgDao) GetAll(user *models.User) ([]models.File, error) {
 	files := make([]models.File, 0)
 	db, err := database.GetPgDb()
+	if err != nil {
+		logrus.Fatal("Unable to connnect with database: " + err.Error())
+		return nil, err
+	}
 	defer db.Close()
 
 	rows, err := db.Query(`SELECT
@@ -50,6 +54,7 @@ func (dao FilePgDao) GetByPk(filename string, user *models.User) (models.File, e
 	db, err := database.GetPgDb()
 	if err != nil {
 		logrus.Fatal("Unable to connnect with database: " + err.Error())
+		return models.File{}, err
 	}
 	defer db.Close()
 
@@ -74,6 +79,7 @@ func (dao FilePgDao) Create(file *models.File) (models.File, error) {
 	db, err := database.GetPgDb()
 	if err != nil {
 		logrus.Fatal("Unable to connnect with database: " + err.Error())
+		return models.File{}, err
 	}
 	defer db.Close()
 
@@ -99,6 +105,7 @@ func (dao FilePgDao) Update(id int64, file *models.File) (models.File, error) {
 	db, err := database.GetPgDb()
 	if err != nil {
 		logrus.Fatal("Unable to connnect with database: " + err.Error())
+		return models.File{}, err
 	}
 	defer db.Close()
 
@@ -126,6 +133,10 @@ RETURNING *`,
 
 func (dao FilePgDao) Delete(id int64) error {
 	db, err := database.GetPgDb()
+	if err != nil {
+		logrus.Fatal("Unable to connnect with database: " + err.Error())
+		return err
+	}
 	defer db.Close()
 
 	result, err := db.Exec("DELETE FROM files WHERE id = $1", id)

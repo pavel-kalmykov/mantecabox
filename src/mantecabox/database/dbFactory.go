@@ -18,7 +18,7 @@ func GetPgDb() (*sql.DB, error) {
 
 func GetDbReadingConfig() (*sql.DB, error) {
 	return withConfigReaden(func(config models.Configuration) (*sql.DB, error) {
-		return getDb(config.Engine, config)
+		return getDb(config.Database.Engine, config)
 	})
 }
 
@@ -31,8 +31,8 @@ func withConfigReaden(f func(configuration models.Configuration) (*sql.DB, error
 }
 
 func getDb(engine string, config models.Configuration) (*sql.DB, error) {
-	connectionString := fmt.Sprintf("%s://%s:%s@%s:%s/%s?sslmode=require",
-		engine, config.User, config.Password, config.Server, config.Port, config.Database)
+	connectionString := fmt.Sprintf("%v://%v:%v@%v:%v/%v?sslmode=require",
+		engine, config.Database.User, config.Database.Password, config.Database.Host, config.Database.Port, config.Database.Name)
 	db, err := sql.Open(engine, connectionString)
 	return db, err
 }
