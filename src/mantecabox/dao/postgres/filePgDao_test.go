@@ -21,10 +21,14 @@ VALUES ('testuser1', 'testpassword1'),
 )
 
 func TestFilePgDao_GetAll(t *testing.T) {
+	type args struct {
+		user     models.User
+	}
 	testCases := []struct {
 		name        string
 		insertQuery string
 		want        []models.File
+		args        args
 	}{
 		{
 			"When the files table has some files, retrieve all them",
@@ -36,14 +40,14 @@ VALUES ('testfile1a', 'testuser1'),
 			[]models.File{
 				{Name: "testfile1a", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}},
 				{Name: "testfile1b", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}},
-				{Name: "testfile2a", Owner: models.User{Credentials: models.Credentials{Email: "testuser2", Password: "testpassword2"}}},
-				{Name: "testfile2b", Owner: models.User{Credentials: models.Credentials{Email: "testuser2", Password: "testpassword2"}}},
 			},
+			args{models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}},
 		},
 		{
 			"When the files table is empty, retrieve an empty set",
 			``,
 			[]models.File{},
+			args{models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}},
 		},
 		{
 			"When the files table has some deleted users, don't retrieve them",
@@ -54,8 +58,8 @@ VALUES (NULL, 'testfile1a', 'testuser1'),
   (NOW(), 'testfile2b', 'testuser2');`,
 			[]models.File{
 				{Name: "testfile1a", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}},
-				{Name: "testfile2a", Owner: models.User{Credentials: models.Credentials{Email: "testuser2", Password: "testpassword2"}}},
 			},
+			args{models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}},
 		},
 	}
 
@@ -67,7 +71,7 @@ VALUES (NULL, 'testfile1a', 'testuser1'),
 
 		t.Run(testCase.name, func(t *testing.T) {
 			dao := FilePgDao{}
-			got, err := dao.GetAll()
+			got, err := dao.GetAll(&testCase.args.user)
 			require.NoError(t, err)
 
 			// We ignore the timestamps as we don't need to get them compared
