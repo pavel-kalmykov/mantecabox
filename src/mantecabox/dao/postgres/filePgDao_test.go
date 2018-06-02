@@ -21,10 +21,14 @@ VALUES ('testuser1', 'testpassword1'),
 )
 
 func TestFilePgDao_GetAll(t *testing.T) {
+	type args struct {
+		user models.User
+	}
 	testCases := []struct {
 		name        string
 		insertQuery string
 		want        []models.File
+		args        args
 	}{
 		{
 			"When the files table has some files, retrieve all them",
@@ -34,16 +38,16 @@ VALUES ('testfile1a', 'testuser1'),
   ('testfile2a', 'testuser2'),
   ('testfile2b', 'testuser2');`,
 			[]models.File{
-				{Name: "testfile1a", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}, UserReadable: true, UserWritable: true, GroupReadable: true},
-				{Name: "testfile1b", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}, UserReadable: true, UserWritable: true, GroupReadable: true},
-				{Name: "testfile2a", Owner: models.User{Credentials: models.Credentials{Email: "testuser2", Password: "testpassword2"}}, UserReadable: true, UserWritable: true, GroupReadable: true},
-				{Name: "testfile2b", Owner: models.User{Credentials: models.Credentials{Email: "testuser2", Password: "testpassword2"}}, UserReadable: true, UserWritable: true, GroupReadable: true},
+				{Name: "testfile1a", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}},
+				{Name: "testfile1b", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}},
 			},
+			args{models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}},
 		},
 		{
 			"When the files table is empty, retrieve an empty set",
 			``,
 			[]models.File{},
+			args{models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}},
 		},
 		{
 			"When the files table has some deleted users, don't retrieve them",
@@ -53,9 +57,9 @@ VALUES (NULL, 'testfile1a', 'testuser1'),
   (NULL, 'testfile2a', 'testuser2'),
   (NOW(), 'testfile2b', 'testuser2');`,
 			[]models.File{
-				{Name: "testfile1a", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}, UserReadable: true, UserWritable: true, GroupReadable: true},
-				{Name: "testfile2a", Owner: models.User{Credentials: models.Credentials{Email: "testuser2", Password: "testpassword2"}}, UserReadable: true, UserWritable: true, GroupReadable: true},
+				{Name: "testfile1a", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}},
 			},
+			args{models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}},
 		},
 	}
 
@@ -67,7 +71,7 @@ VALUES (NULL, 'testfile1a', 'testuser1'),
 
 		t.Run(testCase.name, func(t *testing.T) {
 			dao := FilePgDao{}
-			got, err := dao.GetAll()
+			got, err := dao.GetAll(&testCase.args.user)
 			require.NoError(t, err)
 
 			// We ignore the timestamps as we don't need to get them compared
@@ -98,7 +102,8 @@ VALUES (NULL, 'testfile1a', 'testuser1'),
 
 func TestFilePgDao_GetByPk(t *testing.T) {
 	type args struct {
-		id int64
+		filename string
+		user     *models.User
 	}
 	testCases := []struct {
 		name        string
@@ -110,21 +115,21 @@ func TestFilePgDao_GetByPk(t *testing.T) {
 		{
 			"When you ask for an existent file, retrieve it",
 			testFileInsertQuery,
-			args{},
-			models.File{Name: "testfile1a", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}, UserReadable: true, UserWritable: true, GroupReadable: true},
+			args{"testfile1a", &models.User{Credentials: models.Credentials{Email: "testuser1"}}},
+			models.File{Name: "testfile1a", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}},
 			false,
 		},
 		{
 			"When you ask for an non-existent file, return an empty file and an error",
 			``,
-			args{id: -1},
+			args{"noexiste", &models.User{Credentials: models.Credentials{Email: "noexiste"}}},
 			models.File{},
 			true,
 		},
 		{
 			"When you ask for a deleted file, return an empty file and an error",
 			`INSERT INTO files (deleted_at, name, owner) VALUES (NOW(), 'testfile1a', 'testuser1') RETURNING id;`,
-			args{},
+			args{"testfile1a", &models.User{Credentials: models.Credentials{Email: "testuser1"}}},
 			models.File{},
 			true,
 		},
@@ -134,26 +139,17 @@ func TestFilePgDao_GetByPk(t *testing.T) {
 	defer db.Close()
 
 	for _, testCase := range testCases {
-		cleanAndPopulateDb(db, testUsersInsertQuery, t)
-		if testCase.insertQuery != "" {
-			db.QueryRow(testCase.insertQuery).Scan(&testCase.want.Id)
-			if testCase.wantErr {
-				testCase.want.Id = 0
-			} else {
-				testCase.args.id = testCase.want.Id
-			}
-		}
+		cleanAndPopulateDb(db, testUsersInsertQuery+testCase.insertQuery, t)
 		t.Run(testCase.name, func(t *testing.T) {
 			dao := FilePgDao{}
-			got, err := dao.GetByPk(testCase.args.id)
+			got, err := dao.GetByPk(testCase.args.filename, testCase.args.user)
 			requireFileEqualCheckingErrors(t, testCase.wantErr, err, testCase.want, got)
 		})
 	}
 }
 
 func TestFilePgDao_Create(t *testing.T) {
-	file := models.File{Name: "testfile", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}},
-		UserReadable: true, UserWritable: true, GroupReadable: true, GroupWritable: true}
+	file := models.File{Name: "testfile", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}}
 	fileWithoutName := file
 	fileWithoutName.Name = ""
 	fileWithoutOwner := file
@@ -279,7 +275,8 @@ func TestUpdate(t *testing.T) {
 			}
 		}
 		t.Run(testCase.name, func(t *testing.T) {
-			got, err := Update(testCase.args.id, testCase.args.file)
+			dao := FilePgDao{}
+			got, err := dao.Update(testCase.args.id, testCase.args.file)
 			requireFileEqualCheckingErrors(t, testCase.wantErr, err, testCase.want, got)
 		})
 	}
@@ -321,7 +318,8 @@ func TestDelete(t *testing.T) {
 			}
 		}
 		t.Run(testCase.name, func(t *testing.T) {
-			err := Delete(testCase.args.id)
+			dao := FilePgDao{}
+			err := dao.Delete(testCase.args.id)
 			if testCase.wantErr {
 				require.Error(t, err)
 			} else {
@@ -343,16 +341,14 @@ func requireFileEqualCheckingErrors(t *testing.T, wantErr bool, err error, expec
 		updatedAtDate := date.FromTime(actual.UpdatedAt.Time)
 		require.True(t, createdAtDate.Within(date.SingleDay(createdAtDate)))
 		require.True(t, updatedAtDate.Within(date.SingleDay(updatedAtDate)))
-		actual.CreatedAt = null.Time{}
-		actual.UpdatedAt = null.Time{}
 
 		// same for owners
 		createdAtDate = date.FromTime(actual.Owner.CreatedAt.Time)
 		updatedAtDate = date.FromTime(actual.Owner.UpdatedAt.Time)
 		require.True(t, createdAtDate.Within(date.SingleDay(createdAtDate)))
 		require.True(t, updatedAtDate.Within(date.SingleDay(updatedAtDate)))
-		actual.Owner.CreatedAt = null.Time{}
-		actual.Owner.UpdatedAt = null.Time{}
 	}
-	require.Equal(t, expected, actual)
+	require.Equal(t, expected.Name, actual.Name)
+	require.Equal(t, expected.Owner.Email, actual.Owner.Email)
+	require.Equal(t, expected.Owner.Password, actual.Owner.Password)
 }

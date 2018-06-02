@@ -1,0 +1,2 @@
+ALTER TABLE login_attempts
+  ALTER COLUMN ip TYPE VARCHAR(39)

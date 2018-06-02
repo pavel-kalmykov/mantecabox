@@ -113,7 +113,7 @@ func login(credentialsFunc func() models.Credentials) error {
 
 	var twoFactorAuth string
 	fmt.Println(verificationResult.Message)
-	fmt.Print("Verification Code: ")
+	fmt.Print("Verification Code: M-")
 	fmt.Scanln(&twoFactorAuth)
 
 	var result models.JwtResponse
