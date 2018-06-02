@@ -364,8 +364,8 @@ func TestJWTRouter(t *testing.T) {
 						token, _ := jwt.Parse(tokenString, tokenParserFunc)
 
 						require.EqualValues(t, http.StatusOK, code)
-						require.True(t, expireDate.After(time.Now().Local().Add(time.Hour-time.Minute)))
-						require.True(t, expireDate.Before(time.Now().Local().Add(time.Hour)))
+						require.True(t, expireDate.After(time.Now().Local().Add(tokenRefresh-time.Minute)))
+						require.True(t, expireDate.Before(time.Now().Local().Add(tokenRefresh)))
 						require.True(t, token.Valid)
 					})
 			},

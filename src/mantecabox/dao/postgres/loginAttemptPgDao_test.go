@@ -163,7 +163,7 @@ func TestLoginAttemptPgDao_Create(t *testing.T) {
 	attemptWithoutUserAgent := successfulAttempt
 	attemptWithoutUserAgent.UserAgent = null.String{}
 	attemptWithMalformedIp := successfulAttempt
-	attemptWithMalformedIp.IP = null.String{NullString: sql.NullString{String: "localhost 127.0.0.1", Valid: true}}
+	attemptWithMalformedIp.IP = null.String{NullString: sql.NullString{String: "localhostlocalhostlocalhostlocalhostlocalhostlocalhost", Valid: true}}
 
 	type args struct {
 		attempt *models.LoginAttempt
@@ -204,7 +204,7 @@ func TestLoginAttemptPgDao_Create(t *testing.T) {
 			wantErr:   false,
 		},
 		{
-			name:      "Create an attempt with malformed IPv4",
+			name:      "Create an attempt with malformed IP",
 			prepQuery: testUserInsert,
 			args:      args{attempt: &attemptWithMalformedIp},
 			want:      &attemptWithMalformedIp,
