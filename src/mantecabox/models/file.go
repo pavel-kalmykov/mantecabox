@@ -9,10 +9,13 @@ type File struct {
 }
 
 type FileDTO struct {
+	TimeStamp
 	Name  string `json:"name"`
-	Owner string `json:"owner"`
 }
 
-type Files struct {
-	Name  string `json:"name"`
+func FileToDto(file File) FileDTO {
+	return FileDTO{
+		TimeStamp: file.TimeStamp,
+		Name:      file.Name,
+	}
 }

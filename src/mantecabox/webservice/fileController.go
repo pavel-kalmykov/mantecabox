@@ -12,8 +12,8 @@ import (
 	"mantecabox/services"
 	"mantecabox/utilities/aes"
 
-	"github.com/PeteProgrammer/go-automapper"
 	"github.com/appleboy/gin-jwt"
+	"github.com/benashford/go-func"
 	"github.com/gin-gonic/gin"
 	"github.com/go-http-utils/headers"
 )
@@ -52,10 +52,8 @@ func UploadFile(context *gin.Context) {
 	if err != nil {
 		sendJsonMsg(context, http.StatusInternalServerError, err.Error())
 	}
-	context.JSON(http.StatusCreated, models.FileDTO{
-		Name:  fileModel.Name,
-		Owner: fileModel.Owner.Email,
-	})
+
+	context.JSON(http.StatusCreated, models.FileToDto(fileModel))
 }
 
 // TODO mover cosas de negocio a la capa services
@@ -138,7 +136,6 @@ func GetAllFiles(context *gin.Context) {
 		return
 	}
 
-	var dtos []models.Files
-	automapper.Map(files, &dtos)
-	context.JSON(http.StatusOK, dtos)
+	filesDto := funcs.Maps(files, models.FileToDto).([]models.FileDTO)
+	context.JSON(http.StatusOK, filesDto)
 }

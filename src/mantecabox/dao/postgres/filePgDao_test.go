@@ -22,7 +22,7 @@ VALUES ('testuser1', 'testpassword1'),
 
 func TestFilePgDao_GetAll(t *testing.T) {
 	type args struct {
-		user     models.User
+		user models.User
 	}
 	testCases := []struct {
 		name        string
@@ -115,21 +115,21 @@ func TestFilePgDao_GetByPk(t *testing.T) {
 		{
 			"When you ask for an existent file, retrieve it",
 			testFileInsertQuery,
-			args{"testfile1a", &models.User{Credentials: models.Credentials{ Email: "testuser1"}}},
+			args{"testfile1a", &models.User{Credentials: models.Credentials{Email: "testuser1"}}},
 			models.File{Name: "testfile1a", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}},
 			false,
 		},
 		{
 			"When you ask for an non-existent file, return an empty file and an error",
 			``,
-			args{"noexiste", &models.User{Credentials: models.Credentials{ Email: "noexiste"}}},
+			args{"noexiste", &models.User{Credentials: models.Credentials{Email: "noexiste"}}},
 			models.File{},
 			true,
 		},
 		{
 			"When you ask for a deleted file, return an empty file and an error",
 			`INSERT INTO files (deleted_at, name, owner) VALUES (NOW(), 'testfile1a', 'testuser1') RETURNING id;`,
-			args{"testfile1a", &models.User{Credentials: models.Credentials{ Email: "testuser1"}}},
+			args{"testfile1a", &models.User{Credentials: models.Credentials{Email: "testuser1"}}},
 			models.File{},
 			true,
 		},
@@ -139,7 +139,7 @@ func TestFilePgDao_GetByPk(t *testing.T) {
 	defer db.Close()
 
 	for _, testCase := range testCases {
-		cleanAndPopulateDb(db, testUsersInsertQuery + testCase.insertQuery, t)
+		cleanAndPopulateDb(db, testUsersInsertQuery+testCase.insertQuery, t)
 		t.Run(testCase.name, func(t *testing.T) {
 			dao := FilePgDao{}
 			got, err := dao.GetByPk(testCase.args.filename, testCase.args.user)
