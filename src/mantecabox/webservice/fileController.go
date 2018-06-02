@@ -1,21 +1,17 @@
 package webservice
 
 import (
-	"bytes"
 	"database/sql"
-	"io/ioutil"
+	"fmt"
 	"net/http"
-	"os"
 	"strconv"
 
 	"mantecabox/models"
 	"mantecabox/services"
-	"mantecabox/utilities/aes"
 
 	"github.com/appleboy/gin-jwt"
 	"github.com/benashford/go-func"
 	"github.com/gin-gonic/gin"
-	"github.com/go-http-utils/headers"
 )
 
 // UploadFile se encarga de la subida y cifrado de los ficheros.
@@ -56,7 +52,6 @@ func UploadFile(context *gin.Context) {
 	context.JSON(http.StatusCreated, models.FileToDto(fileModel))
 }
 
-// TODO mover cosas de negocio a la capa services
 func DeleteFile(context *gin.Context) {
 	fileID := context.Param("file")
 
@@ -66,7 +61,7 @@ func DeleteFile(context *gin.Context) {
 		return
 	}
 
-	err = services.DeleteFile(file)
+	err = services.DeleteFile(file, fileID)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			sendJsonMsg(context, http.StatusNotFound, "Unable to find file: "+fileID)
@@ -76,16 +71,9 @@ func DeleteFile(context *gin.Context) {
 		return
 	}
 
-	err = os.Remove(services.Path + fileID)
-	if err != nil {
-		sendJsonMsg(context, http.StatusInternalServerError, err.Error())
-		return
-	}
-
 	context.Writer.WriteHeader(http.StatusNoContent)
 }
 
-// TODO mover cosas de negocio a la capa services
 func GetFile(context *gin.Context) {
 
 	filename := context.Param("file")
@@ -93,28 +81,20 @@ func GetFile(context *gin.Context) {
 	file, err := checkSameFileExist(filename, getUser(context))
 	if err != nil {
 		if err == sql.ErrNoRows {
-			sendJsonMsg(context, http.StatusNotFound, "Unable to find file: "+filename)
+			sendJsonMsg(context, http.StatusNotFound, fmt.Sprintf(`Unable to find file "%v": %v`, filename, err))
+			return
 		} else {
-			sendJsonMsg(context, http.StatusInternalServerError, "Unable to find file: "+err.Error())
+			sendJsonMsg(context, http.StatusInternalServerError, fmt.Sprintf(`Unable to find file "%v": %v`, filename, err))
+			return
 		}
-		return
 	}
 
-	fileEncrypt, err := ioutil.ReadFile(services.Path + strconv.FormatInt(file.Id, 10))
+	fileDecrypt, err := services.GetDecryptedLocalFile(file)
 	if err != nil {
-		sendJsonMsg(context, http.StatusInternalServerError, err.Error())
-		return
+		sendJsonMsg(context, http.StatusInternalServerError, fmt.Sprintf(`Unable to find file "%v": %v`, filename, err))
 	}
 
-	fileDecrypt := aes.Decrypt(fileEncrypt)
-
-	reader := bytes.NewReader(fileDecrypt)
-	contentLength := reader.Size()
-	contentType := "application/octet-stream"
-
-	extraHeaders := map[string]string{
-		headers.ContentDisposition: `attachment; filename="` + file.Name + `"`,
-	}
+	contentLength, contentType, reader, extraHeaders := services.GetFileStream(fileDecrypt, file)
 
 	context.DataFromReader(http.StatusOK, contentLength, contentType, reader, extraHeaders)
 }
