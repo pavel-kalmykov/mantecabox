@@ -54,7 +54,7 @@ func Signup(credentialsFunc func() models.Credentials) error {
 		return errors.New("username not registered properly")
 	}
 
-	fmt.Printf("User %v registered successfully!\n", result.Email)
+	fmt.Println(SuccesMessage("User %v registered successfully!\n", result.Email))
 	return nil
 }
 
@@ -116,6 +116,6 @@ func Login(credentialsFunc func() models.Credentials) error {
 		return err
 	}
 
-	fmt.Printf("Successfully logged for %v", durafmt.ParseShort(result.Expire.Sub(time.Now())))
+	fmt.Println(SuccesMessage("Successfully logged for %v", durafmt.ParseShort(result.Expire.Sub(time.Now())).String()))
 	return nil
 }

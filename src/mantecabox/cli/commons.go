@@ -14,6 +14,7 @@ import (
 
 	"github.com/appleboy/gin-jwt"
 	"github.com/briandowns/spinner"
+	"github.com/fatih/color"
 	"github.com/howeyc/gopass"
 	"github.com/tidwall/gjson"
 	"github.com/zalando/go-keyring"
@@ -51,7 +52,7 @@ func GetToken() (string, error) {
 		return "", err
 	}
 
-	if remainingTime := parsedToken.Expire.Sub(time.Now()); remainingTime < (time.Minute*15) {
+	if remainingTime := parsedToken.Expire.Sub(time.Now()); remainingTime < (time.Minute * 15) {
 		var result models.JwtResponse
 		response, err := resty.R().
 			SetAuthToken(parsedToken.Token).
@@ -105,4 +106,14 @@ func ReadCredentials() models.Credentials {
 	}
 	credentials.Password = string(pass)
 	return credentials
+}
+
+func SuccesMessage(text string, args ...string) string {
+	c := color.New(color.FgCyan)
+	return c.Sprintf("✔ "+text, strings.Join(args, ""))
+}
+
+func ErrorMessage(text string, args ...string) string {
+	c := color.New(color.FgRed)
+	return c.Sprintf("❌ "+ text, strings.Join(args, ""))
 }

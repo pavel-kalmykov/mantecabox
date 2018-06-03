@@ -37,26 +37,26 @@ func main() {
 	case "signup":
 		err := cli.Signup(cli.ReadCredentials)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "An error ocurred during signup: %v\n", err)
+			fmt.Fprintf(os.Stderr, cli.ErrorMessage("An error ocurred during signup: %v\n", err.Error()))
 		}
 		break
 	case "login":
 		err := cli.Login(cli.ReadCredentials)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "An error ocurred during login: %v\n", err)
+			fmt.Fprintf(os.Stderr, cli.ErrorMessage("An error ocurred during login: %v\n", err.Error()))
 		}
 		break
 	case "transfer":
 		err := cli.Transfer(args.TransferActions)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "An error ocurred during transfer: %v\n", err)
+			fmt.Fprintf(os.Stderr, cli.ErrorMessage("An error ocurred during transfer: %v\n", err.Error()))
 		}
 		break
 	case "help":
 		parser.WriteHelp(os.Stdin)
 		break
 	default:
-		parser.Fail(fmt.Sprintf(`Operation "%v" not recognized`, args.Operation))
+		parser.Fail(cli.ErrorMessage(`Operation "%v" not recognized`, args.Operation))
 		break
 	}
 }

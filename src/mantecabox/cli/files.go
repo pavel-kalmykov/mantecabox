@@ -28,7 +28,7 @@ func uploadFile(filePath string, token string) (string, error) {
 	fileName := gjson.Get(response.String(), "name")
 
 	if response.StatusCode() != http.StatusCreated && response.StatusCode() != http.StatusOK {
-		return "", errors.New(fmt.Sprintf("an error was received while uploading the '%v' file.", fileName))
+		return "", errors.New(ErrorMessage("error uploading file '%v'.", fileName.Str))
 	}
 
 	return fileName.Str, nil
@@ -46,7 +46,7 @@ func downloadFile(fileSelected string, token string) error {
 	}
 
 	if response.StatusCode() != http.StatusOK {
-		return errors.New(fmt.Sprintf("an error was received while downloading the '%v' file.", fileSelected))
+		return errors.New(ErrorMessage("error downloading file '%v'.", fileSelected))
 	}
 
 	return nil
@@ -63,7 +63,7 @@ func deleteFile(filename string, token string) error {
 	}
 
 	if response.StatusCode() != http.StatusNoContent {
-		return errors.New(fmt.Sprintf("an error was received while removing the '%v' file.", filename))
+		return errors.New(ErrorMessage("error removing file '%v'.", filename))
 	}
 
 	return nil
@@ -85,7 +85,6 @@ func Transfer(transferActions [] string) error {
 				return err
 			}
 
-			fmt.Println("These are your files:")
 			for _, f := range list {
 				fmt.Printf(" - %v\n", f)
 			}
@@ -94,22 +93,22 @@ func Transfer(transferActions [] string) error {
 				for i := 1; i < len(transferActions); i++ {
 					fileName, err := uploadFile(transferActions[i], token)
 					if err != nil {
-						fmt.Printf("Error has succes in intent of upload file '%v' \n", transferActions[i])
+						fmt.Printf(ErrorMessage("Error uploading file '%v'\n", transferActions[i]))
 					} else {
-						fmt.Printf("File '%v' has uploaded correctly.\n", fileName)
+						fmt.Printf(SuccesMessage("File '%v' uploaded correctly.\n", fileName))
 					}
 				}
 			} else {
-				return errors.New(fmt.Sprintf("params not found"))
+				return errors.New("params not found")
 			}
 		case "download":
 			if lengthActions > 1 {
 				for i := 1; i < len(transferActions); i++ {
 					err := downloadFile(transferActions[i], token)
 					if err != nil {
-						fmt.Printf("Error has succes in intent of download file '%v' \n", transferActions[i])
+						fmt.Printf(ErrorMessage("Error downloading file '%v'.\n", transferActions[i]))
 					} else {
-						fmt.Printf("File '%v' has downloaded correctly.\n", transferActions[i])
+						fmt.Printf(SuccesMessage("File '%v' downloaded correctly.\n", transferActions[i]))
 					}
 				}
 			} else {
@@ -125,7 +124,7 @@ func Transfer(transferActions [] string) error {
 
 				fileSelected := ""
 				prompt := &survey.Select{
-					Message: "These are your files. Please, choose once: ",
+					Message: "Please, choose one file: ",
 					Options: listaString,
 				}
 				survey.AskOne(prompt, &fileSelected, nil)
@@ -134,7 +133,7 @@ func Transfer(transferActions [] string) error {
 				if err != nil {
 					return err
 				}
-				fmt.Printf("File '%v' has downloaded correctly.", fileSelected)
+				fmt.Println(SuccesMessage("File '%v' downloaded correctly.", fileSelected))
 			}
 		case "remove":
 			if lengthActions > 1 {
@@ -144,16 +143,16 @@ func Transfer(transferActions [] string) error {
 						return err
 					}
 
-					fmt.Printf("File '%v' has removed correctly.\n", transferActions[i])
+					fmt.Println(SuccesMessage("File '%v' removed correctly.\n", transferActions[i]))
 				}
 			} else {
-				return errors.New(fmt.Sprintf("params not found"))
+				return errors.New("params not found")
 			}
 		default:
-			return errors.New(fmt.Sprintf("action '%v' not exist", transferActions[0]))
+			return errors.New(ErrorMessage("action '%v' not exist", transferActions[0]))
 		}
 	} else {
-		return errors.New(fmt.Sprintf("action '%v' not found", transferActions[0]))
+		return errors.New(ErrorMessage("action '%v' not found", transferActions[0]))
 	}
 
 	return nil
@@ -172,6 +171,6 @@ func getFiles(token string) ([]gjson.Result, error) {
 		list := gjson.Get(response.String(), "#.name").Array()
 		return list, nil
 	} else {
-		return nil, errors.New("server did not sent HTTP 200 OK status. " + response.String())
+		return nil, errors.New(ErrorMessage("server did not sent HTTP 200 OK status. ") + response.String())
 	}
 }
