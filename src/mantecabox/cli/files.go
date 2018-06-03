@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/go-resty/resty"
 	"github.com/tidwall/gjson"
@@ -80,13 +81,13 @@ func Transfer(transferActions []string) error {
 	if lengthActions > 0 {
 		switch transferActions[0] {
 		case "list":
-			list, err := getFiles(token)
+			list, listUpdates, err := getFiles(token)
 			if err != nil {
 				fmt.Printf(err.Error())
 			}
 
-			for _, f := range list {
-				fmt.Printf(" - %v\n", f)
+			for i := 0; i < len(list); i++  {
+				fmt.Printf(" - %v\t%v\n", listUpdates[i].Time().Format(time.RFC822), list[i])
 			}
 		case "upload":
 			if lengthActions > 1 {
@@ -158,7 +159,7 @@ func Transfer(transferActions []string) error {
 }
 
 func getFileList(token string) (string, error){
-	list, err := getFiles(token)
+	list, _, err := getFiles(token)
 	if err != nil {
 		return "", err
 	}
@@ -182,23 +183,24 @@ func getFileList(token string) (string, error){
 	return fileSelected, err
 }
 
-func getFiles(token string) ([]gjson.Result, error) {
+func getFiles(token string) ([]gjson.Result, []gjson.Result, error) {
 	s := GetSpinner()
 	response, err := resty.R().
 		SetAuthToken(token).
 		Get("/files")
 	s.Stop()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	if response.StatusCode() == http.StatusOK {
 		list := gjson.Get(response.String(), "#.name").Array()
+		listUpdates := gjson.Get(response.String(), "#.updated_at").Array()
 		if !(len(list) > 0) {
-			return nil, errors.New("there are no files in the database. Upload one")
+			return nil, nil, errors.New("there are no files in the database. Upload one")
 		}
-		return list, nil
+		return list, listUpdates, nil
 	} else {
-		return nil, errors.New(ErrorMessage("server did not sent HTTP 200 OK status. ") + response.String())
+		return nil, nil, errors.New(ErrorMessage("server did not sent HTTP 200 OK status. ") + response.String())
 	}
 }
