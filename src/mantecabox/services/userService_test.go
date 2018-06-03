@@ -13,7 +13,6 @@ import (
 	"mantecabox/database"
 	"mantecabox/models"
 	"mantecabox/utilities"
-	"mantecabox/utilities/aes"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -108,7 +107,7 @@ func TestGetUser(t *testing.T) {
 				require.NoError(t, err)
 				decodedActualPassword, err := base64.URLEncoding.DecodeString(actualUser.Password)
 				require.NoError(t, err)
-				err = bcrypt.CompareHashAndPassword(aes.Decrypt(decodedActualPassword), decodedExpectedPassword)
+				err = bcrypt.CompareHashAndPassword(testUserService.AesCipher().Decrypt(decodedActualPassword), decodedExpectedPassword)
 				require.NoError(t, err)
 			},
 		},
@@ -143,7 +142,7 @@ func TestRegisterUser(t *testing.T) {
 				require.NoError(t, err)
 				decodedActualPassword, err := base64.URLEncoding.DecodeString(actualUser.Password)
 				require.NoError(t, err)
-				err = bcrypt.CompareHashAndPassword(aes.Decrypt(decodedActualPassword), decodedExpectedPassword)
+				err = bcrypt.CompareHashAndPassword(testUserService.AesCipher().Decrypt(decodedActualPassword), decodedExpectedPassword)
 				require.NoError(t, err)
 			},
 		},
@@ -222,7 +221,7 @@ func TestModifyUser(t *testing.T) {
 				require.NoError(t, err)
 				decodedActualPassword, err := base64.URLEncoding.DecodeString(actualUser.Password)
 				require.NoError(t, err)
-				err = bcrypt.CompareHashAndPassword(aes.Decrypt(decodedActualPassword), decodedExpectedPassword)
+				err = bcrypt.CompareHashAndPassword(testUserService.AesCipher().Decrypt(decodedActualPassword), decodedExpectedPassword)
 				require.NoError(t, err)
 			},
 		},
@@ -484,7 +483,7 @@ func TestNewUserService(t *testing.T) {
 	}{
 		{
 			name: "When passing the configuration, return the service",
-			args: args{configuration: &models.Configuration{}},
+			args: args{configuration: &models.Configuration{AesKey: "0123456789ABCDEF"}},
 			want: UserServiceImpl{},
 		},
 		{

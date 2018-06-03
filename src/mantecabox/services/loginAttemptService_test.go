@@ -8,6 +8,7 @@ import (
 
 	"mantecabox/models"
 
+	"github.com/hako/durafmt"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/guregu/null.v3"
 )
@@ -67,7 +68,9 @@ func TestProcessLoginAttempt(t *testing.T) {
 				err = testLoginAttemptService.ProcessLoginAttempt(&unsuccessfulAttempt)
 				require.Error(t, err)
 				err = testLoginAttemptService.ProcessLoginAttempt(&successfulAttempt)
-				require.Equal(t, errors.New(fmt.Sprintf("Login for user %v blocked for the next %.2f minutes", successfulAttempt.User.Email, timeLimit.Minutes())), err)
+				duration, err2 := durafmt.ParseStringShort(testLoginAttemptService.Configuration().BlockedLoginTimeLimit)
+				require.NoError(t, err2)
+				require.Equal(t, errors.New(fmt.Sprintf("Login for user %v blocked for the next %v", successfulAttempt.User.Email, duration)), err)
 			},
 		},
 		{

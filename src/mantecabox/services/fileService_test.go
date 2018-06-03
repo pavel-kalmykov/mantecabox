@@ -18,7 +18,7 @@ func TestNewFileService(t *testing.T) {
 	}{
 		{
 			name: "When passing the configuration, return the service",
-			args: args{configuration: &models.Configuration{}},
+			args: args{configuration: &models.Configuration{AesKey: "0123456789ABCDEF"}},
 			want: FileServiceImpl{},
 		},
 		{

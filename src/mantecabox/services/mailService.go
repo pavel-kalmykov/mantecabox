@@ -6,6 +6,7 @@ import (
 	"mantecabox/models"
 
 	"github.com/badoux/checkmail"
+	"github.com/hako/durafmt"
 	"gopkg.in/gomail.v2"
 )
 
@@ -36,16 +37,21 @@ func (mailService MailServiceImpl) Send2FAEmail(toEmail, code string) error {
 	if err := checkmail.ValidateHost(toEmail); err != nil {
 		return err
 	}
-	return mailService.SendMail(toEmail, fmt.Sprintf("Hello. Your security code is M-<b>%v</b>. It will expire in 5 minutes", code))
+	durationStr, err := durafmt.ParseString(mailService.configuration.VerificationMailTimeLimit)
+	if err != nil {
+		panic("unable to parse mail's verification limit configuration value: " + err.Error())
+	}
+	return mailService.SendMail(toEmail, fmt.Sprintf("Hello. Your security code is M-<strong>%v</strong>. It will expire in %v", code, durationStr))
 }
 
 func (mailService MailServiceImpl) SendMail(toEmail, bodyMessage string) error {
+	mailConf := mailService.configuration.Mail
 	m := gomail.NewMessage()
-	m.SetHeader("From", "mantecabox@gmail.com")
+	m.SetHeader("From", mailConf.Username)
 	m.SetHeader("To", toEmail)
 	m.SetHeader("Subject", "Mantecabox Backup")
 	m.SetBody("text/html", bodyMessage)
 	return gomail.
-		NewDialer("smtp.gmail.com", 587, "mantecabox@gmail.com", "ElPutoPavel").
+		NewDialer(mailConf.Host, mailConf.Port, mailConf.Username, mailConf.Password).
 		DialAndSend(m)
 }

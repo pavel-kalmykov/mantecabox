@@ -10,13 +10,9 @@ import (
 	"mantecabox/models"
 
 	"github.com/benashford/go-func"
+	"github.com/hako/durafmt"
 	"github.com/oschwald/geoip2-golang"
 	"github.com/tobie/ua-parser/go/uaparser"
-)
-
-const (
-	MaxUnsuccessfulAttempts = 3
-	timeLimit               = time.Minute * 5
 )
 
 var (
@@ -29,6 +25,7 @@ type (
 		ProcessLoginAttempt(attempt *models.LoginAttempt) error
 		sendNewRegisteredDeviceActivity(attempt *models.LoginAttempt) error
 		sendSuspiciousActivityReport(unsuccessfulAttempt *models.LoginAttempt) error
+		Configuration() *models.Configuration
 	}
 
 	LoginAttemptServiceImpl struct {
@@ -49,6 +46,11 @@ func NewLoginAttemptService(configuration *models.Configuration) LoginAttemptSer
 }
 
 func (loginAttemptService LoginAttemptServiceImpl) ProcessLoginAttempt(attempt *models.LoginAttempt) error {
+	MaxUnsuccessfulAttempts := loginAttemptService.configuration.MaxUnsuccessfulAttempts
+	timeLimit, err := time.ParseDuration(loginAttemptService.configuration.BlockedLoginTimeLimit)
+	if err != nil {
+		panic("unable to parse blocked login's time limit configuration value: " + err.Error())
+	}
 	createdAttempt, err := loginAttemptDao.Create(attempt)
 	if err != nil {
 		return err
@@ -67,8 +69,9 @@ func (loginAttemptService LoginAttemptServiceImpl) ProcessLoginAttempt(attempt *
 		}()
 		return TooManyAttemptsErr
 	}
-	if timeDiff := attempts[len(attempts)-1].CreatedAt.Sub(attempts[0].CreatedAt); len(unsuccessfulAttempts) == MaxUnsuccessfulAttempts && timeDiff < timeLimit {
-		return errors.New(fmt.Sprintf("Login for user %v blocked for the next %.2f minutes", createdAttempt.User.Email, (timeLimit - timeDiff).Minutes()))
+	timeDiff := attempts[len(attempts)-1].CreatedAt.Sub(attempts[0].CreatedAt)
+	if len(unsuccessfulAttempts) == MaxUnsuccessfulAttempts && timeDiff < timeLimit {
+		return errors.New(fmt.Sprintf("Login for user %v blocked for the next %v", createdAttempt.User.Email, durafmt.ParseShort((timeLimit - timeDiff).Round(time.Minute))))
 	}
 	// Then, we look if similar attempt data were added before or if this login occurred in a new device or place
 	similarAttempts, err := loginAttemptDao.GetSimilarAttempts(&createdAttempt)
@@ -147,4 +150,8 @@ func formatAttempt(attempt *models.LoginAttempt) (string, error) {
 		}
 	}
 	return messageBody, nil
+}
+
+func (loginAttemptService LoginAttemptServiceImpl) Configuration() *models.Configuration {
+	return loginAttemptService.configuration
 }

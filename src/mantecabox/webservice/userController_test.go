@@ -12,7 +12,6 @@ import (
 	"mantecabox/dao/interfaces"
 	"mantecabox/database"
 	"mantecabox/services"
-	"mantecabox/utilities/aes"
 
 	"github.com/appleboy/gofight"
 	"github.com/buger/jsonparser"
@@ -37,13 +36,12 @@ const (
 )
 
 var (
+	tokenTimeout    time.Duration
 	testUserService services.UserService
 	userDao         interfaces.UserDao
 	router          *gin.Engine
 	secureRouter    *gin.Engine
-	tokenParserFunc = func(token *jwt.Token) (interface{}, error) {
-		return aes.Key, nil
-	}
+	tokenParserFunc func(token *jwt.Token) (interface{}, error)
 )
 
 type subtest struct {
@@ -63,10 +61,14 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		logrus.Fatal("Unable to open config file", err)
 	}
+	tokenTimeout, err = time.ParseDuration(configuration.TokenTimeout)
 	testUserService = services.NewUserService(&configuration)
 	userDao = factory.UserDaoFactory(configuration.Database.Engine)
 	router = Router(false, &configuration)
 	secureRouter = Router(true, &configuration)
+	tokenParserFunc = func(token *jwt.Token) (interface{}, error) {
+		return testUserService.AesCipher().Key(), nil
+	}
 	code := m.Run()
 
 	db, err := database.GetPgDb()
@@ -374,8 +376,8 @@ func TestJWTRouter(t *testing.T) {
 						token, _ := jwt.Parse(tokenString, tokenParserFunc)
 
 						require.EqualValues(t, http.StatusOK, code)
-						require.True(t, expireDate.After(time.Now().Local().Add(tokenRefresh-time.Minute)))
-						require.True(t, expireDate.Before(time.Now().Local().Add(tokenRefresh)))
+						require.True(t, expireDate.After(time.Now().Local().Add(tokenTimeout-time.Minute)))
+						require.True(t, expireDate.Before(time.Now().Local().Add(tokenTimeout)))
 						require.True(t, token.Valid)
 					})
 			},
@@ -602,7 +604,7 @@ func TestNewUserController(t *testing.T) {
 	}{
 		{
 			name: "When passing the configuration, return the service",
-			args: args{configuration: &models.Configuration{}},
+			args: args{configuration: &models.Configuration{AesKey: "0123456789ABCDEF", TokenTimeout: "5m"}},
 			want: UserControllerImpl{},
 		},
 		{

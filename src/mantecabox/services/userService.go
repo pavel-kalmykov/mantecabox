@@ -12,7 +12,7 @@ import (
 	"mantecabox/dao/factory"
 	"mantecabox/dao/interfaces"
 	"mantecabox/models"
-	"mantecabox/utilities/aes"
+	"mantecabox/utilities"
 
 	"github.com/badoux/checkmail"
 	"golang.org/x/crypto/bcrypt"
@@ -37,11 +37,13 @@ type (
 		Generate2FACodeAndSaveToUser(user *models.User) (models.User, error)
 		TwoFactorMatchesAndIsNotOutdated(expected, actual string, expire time.Time) bool
 		UserDao() interfaces.UserDao
+		AesCipher() utilities.AesCTRCipher
 	}
 
 	UserServiceImpl struct {
 		configuration *models.Configuration
 		userDao       interfaces.UserDao
+		aesCipher     utilities.AesCTRCipher
 	}
 )
 
@@ -60,6 +62,7 @@ func NewUserService(configuration *models.Configuration) UserService {
 	return UserServiceImpl{
 		configuration: configuration,
 		userDao:       factory.UserDaoFactory(configuration.Database.Engine),
+		aesCipher:     utilities.NewAesCTRCipher(configuration.AesKey),
 	}
 }
 
@@ -86,7 +89,7 @@ func (userService UserServiceImpl) RegisterUser(c *models.Credentials) (models.U
 	}
 	user.Credentials = models.Credentials{
 		Email:    c.Email,
-		Password: base64.URLEncoding.EncodeToString(aes.Encrypt(bcryptedPassword)),
+		Password: base64.URLEncoding.EncodeToString(userService.aesCipher.Encrypt(bcryptedPassword)),
 	}
 	return userService.userDao.Create(&user)
 }
@@ -109,7 +112,7 @@ func (userService UserServiceImpl) ModifyUser(username string, u *models.User) (
 		SoftDelete: u.SoftDelete,
 		Credentials: models.Credentials{
 			Email:    u.Email,
-			Password: base64.URLEncoding.EncodeToString(aes.Encrypt(bcryptedPassword)),
+			Password: base64.URLEncoding.EncodeToString(userService.aesCipher.Encrypt(bcryptedPassword)),
 		},
 	}
 	return userService.userDao.Update(username, &user)
@@ -133,7 +136,7 @@ func (userService UserServiceImpl) UserExists(email, password string) (models.Us
 	if err != nil {
 		return user, false
 	}
-	err = bcrypt.CompareHashAndPassword(aes.Decrypt(decodedActualPassword), decodedExpectedPassword)
+	err = bcrypt.CompareHashAndPassword(userService.aesCipher.Decrypt(decodedActualPassword), decodedExpectedPassword)
 	if err != nil {
 		return user, false
 	}
@@ -151,11 +154,20 @@ func (userService UserServiceImpl) Generate2FACodeAndSaveToUser(user *models.Use
 }
 
 func (userService UserServiceImpl) TwoFactorMatchesAndIsNotOutdated(expected, actual string, expire time.Time) bool {
-	return expected == actual && time.Now().Sub(expire) < time.Minute*5
+	duration, err := time.ParseDuration(userService.configuration.VerificationMailTimeLimit)
+	if err != nil {
+		panic("unable to parse mail's verification limit configuration value: " + err.Error())
+	}
+	timeLimit := duration
+	return expected == actual && time.Now().Sub(expire) < timeLimit
 }
 
 func (userService UserServiceImpl) UserDao() interfaces.UserDao {
 	return userService.userDao
+}
+
+func (userService UserServiceImpl) AesCipher() utilities.AesCTRCipher {
+	return userService.aesCipher
 }
 
 func ValidateCredentials(c *models.Credentials) error {

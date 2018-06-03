@@ -7,15 +7,12 @@ import (
 
 	"mantecabox/models"
 	"mantecabox/services"
-	"mantecabox/utilities/aes"
 
 	"github.com/PeteProgrammer/go-automapper"
 	"github.com/appleboy/gin-jwt"
 	"github.com/gin-gonic/gin"
 	"github.com/go-http-utils/headers"
 )
-
-const tokenRefresh = time.Hour * 24
 
 type (
 	UserController interface {
@@ -43,14 +40,18 @@ func NewUserController(configuration *models.Configuration) UserController {
 	if userService == nil || loginAttemptService == nil || mailService == nil {
 		return nil
 	}
+	tokenTimeout, err := time.ParseDuration(configuration.TokenTimeout)
+	if err != nil {
+		panic("Unable to parse token's timeout: " + err.Error())
+	}
 	return UserControllerImpl{
 		userService:         userService,
 		loginAttemptService: loginAttemptService,
 		mailService:         mailService,
 		authMiddleware: &jwt.GinJWTMiddleware{
 			Realm:      "Mantecabox",
-			Key:        aes.Key,
-			Timeout:    tokenRefresh,
+			Key:        userService.AesCipher().Key(),
+			Timeout:    tokenTimeout,
 			MaxRefresh: time.Hour,
 			HTTPStatusMessageFunc: func(err error, c *gin.Context) string {
 				switch err {

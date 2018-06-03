@@ -1,4 +1,4 @@
-package aes
+package utilities
 
 import (
 	"bytes"
@@ -8,11 +8,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var testAesCTRCipher = NewAesCTRCipher("this is an AES cipher in CTR mode key")
+
 func TestExampleNewCTR(t *testing.T) {
 	const testString = "mantecabox"
 
-	encrypted := Encrypt([]byte(testString))
-	decrypted := Decrypt(encrypted)
+	encrypted := testAesCTRCipher.Encrypt([]byte(testString))
+	decrypted := testAesCTRCipher.Decrypt(encrypted)
 
 	// To check the string is in base64, we try to decode it
 	require.Equal(t, testString, string(decrypted))
@@ -21,8 +23,8 @@ func TestExampleNewCTR(t *testing.T) {
 func TestFileNewCTR(t *testing.T) {
 	testFile, err := ioutil.ReadAll(bytes.NewReader([]byte("Fichero inventado de Mantecabox")))
 	require.NoError(t, err)
-	encrypted := Encrypt(testFile)
-	decrypted := Decrypt(encrypted)
+	encrypted := testAesCTRCipher.Encrypt(testFile)
+	decrypted := testAesCTRCipher.Decrypt(encrypted)
 
 	// To check the string is in base64, we try to decode it
 	require.Equal(t, testFile, decrypted)
