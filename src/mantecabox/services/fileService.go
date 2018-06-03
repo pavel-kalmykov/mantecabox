@@ -5,54 +5,120 @@ import (
 	"io"
 	"io/ioutil"
 	"mime/multipart"
+	"net/http"
 	"os"
 	"strconv"
 
-	"mantecabox/config"
-	"mantecabox/dao/factory"
-	"mantecabox/dao/interfaces"
+	"mantecabox/dao"
 	"mantecabox/models"
-	"mantecabox/utilities/aes"
+	"mantecabox/utilities"
 
 	"github.com/go-http-utils/headers"
 	"github.com/sirupsen/logrus"
 )
 
-var (
-	fileDao interfaces.FileDao
-	path    = "./files/"
+type (
+	FileService interface {
+		GetAllFiles(user models.User) ([]models.File, error)
+		GetFile(filename string, user *models.User) (models.File, error)
+		GetFileStream(fileDecrypt []byte, file models.File) (contentLength int64, contentType string, reader *bytes.Reader, extraHeaders map[string]string)
+		GetDecryptedLocalFile(file models.File) ([]byte, error)
+		CreateFile(file *models.File) (models.File, error)
+		UpdateFile(id int64, file models.File) (models.File, error)
+		SaveFile(file multipart.File, uploadedFile models.File) error
+		DeleteFile(filename string, user *models.User) error
+		createDirIfNotExists()
+	}
+
+	FileServiceImpl struct {
+		configuration *models.Configuration
+		fileDao       dao.FileDao
+		aesCipher     utilities.AesCTRCipher
+	}
 )
 
-func init() {
-	dao := factory.FileDaoFactory(config.GetServerConf().Engine)
-	fileDao = dao
-	CreateDirIfNotExist()
-}
-
-func CreateDirIfNotExist() {
-	err := os.MkdirAll(path, 0600)
-	if err != nil {
-		logrus.Print("Error en la creación del directorio")
-		panic(err)
+func NewFileService(configuration *models.Configuration) FileService {
+	if configuration == nil {
+		return nil
 	}
+	if configuration.FilesPath == "" {
+		configuration.FilesPath = "files"
+	}
+	// Maybe the config path didn't ended with folder's slash, so we add it
+	if configuration.FilesPath[len(configuration.FilesPath)-1] != '/' {
+		configuration.FilesPath += "/"
+	}
+	fileServiceImpl := FileServiceImpl{
+		configuration: configuration,
+		fileDao:       dao.FileDaoFactory(configuration.Database.Engine),
+		aesCipher:     utilities.NewAesCTRCipher(configuration.AesKey),
+	}
+	fileServiceImpl.createDirIfNotExists()
+	return fileServiceImpl
 }
 
-func GetAllFiles(user models.User) ([]models.File, error) {
-	return fileDao.GetAll(&user)
+func (fileService FileServiceImpl) GetAllFiles(user models.User) ([]models.File, error) {
+	return fileService.fileDao.GetAll(&user)
 }
 
-func CreateFile (file *models.File) (models.File, error) {
-	return fileDao.Create(file)
+func (fileService FileServiceImpl) GetFile(filename string, user *models.User) (models.File, error) {
+	return fileService.fileDao.GetByPk(filename, user)
 }
 
-func DeleteFile (file int64, fileID string) error {
+func (fileService FileServiceImpl) GetDecryptedLocalFile(file models.File) ([]byte, error) {
+	fileEncrypt, err := ioutil.ReadFile(fileService.configuration.FilesPath + strconv.FormatInt(file.Id, 10))
+	if err != nil {
+		return nil, err
+	}
 
-	err := fileDao.Delete(file)
+	return fileService.aesCipher.Decrypt(fileEncrypt), err
+}
+
+func (fileService FileServiceImpl) GetFileStream(fileDecrypt []byte, file models.File) (contentLength int64, contentType string, reader *bytes.Reader, extraHeaders map[string]string) {
+	reader = bytes.NewReader(fileDecrypt)
+	contentLength = reader.Size()
+	contentType = http.DetectContentType(fileDecrypt)
+
+	extraHeaders = map[string]string{
+		headers.ContentDisposition: `attachment; filename="` + file.Name + `"`,
+	}
+
+	return
+}
+
+func (fileService FileServiceImpl) CreateFile(file *models.File) (models.File, error) {
+	return fileService.fileDao.Create(file)
+}
+
+func (fileService FileServiceImpl) UpdateFile(id int64, file models.File) (models.File, error) {
+	return fileService.fileDao.Update(id, &file)
+}
+
+func (fileService FileServiceImpl) SaveFile(file multipart.File, uploadedFile models.File) error {
+	// Conversión a bytes del fichero
+	buf := bytes.NewBuffer(nil)
+	if _, err := io.Copy(buf, file); err != nil {
+		return err
+	}
+	encrypted := fileService.aesCipher.Encrypt(buf.Bytes())
+	// Guardamos el fichero encriptado
+	if err := ioutil.WriteFile(fileService.configuration.FilesPath+strconv.FormatInt(uploadedFile.Id, 10), encrypted, 0600); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (fileService FileServiceImpl) DeleteFile(filename string, user *models.User) error {
+	file, err := fileService.fileDao.GetByPk(filename, user)
+	if err != nil {
+		return err
+	}
+	err = fileService.fileDao.Delete(filename, user)
 	if err != nil {
 		return err
 	}
 
-	err = os.Remove(path + fileID)
+	err = os.Remove(fileService.configuration.FilesPath + strconv.FormatInt(file.Id, 10))
 	if err != nil {
 		return err
 	}
@@ -60,45 +126,10 @@ func DeleteFile (file int64, fileID string) error {
 	return err
 }
 
-func GetFile(filename string, user *models.User) (models.File, error) {
-	return fileDao.GetByPk(filename, user)
-}
-
-func UpdateFile(id int64, file models.File) (models.File, error) {
-	return fileDao.Update(id, &file)
-}
-
-func SaveFile(file multipart.File, uploadedFile models.File) error {
-	// Conversión a bytes del fichero
-	buf := bytes.NewBuffer(nil)
-	if _, err := io.Copy(buf, file); err != nil {
-		return err
-	}
-	encrypted := aes.Encrypt(buf.Bytes())
-	// Guardamos el fichero encriptado
-	if err := ioutil.WriteFile(path+strconv.FormatInt(uploadedFile.Id, 10), encrypted, 0600); err != nil {
-		return err
-	}
-	return nil
-}
-
-func GetDecryptedLocalFile(file models.File) ([]byte, error) {
-	fileEncrypt, err := ioutil.ReadFile(path + strconv.FormatInt(file.Id, 10))
+func (fileService FileServiceImpl) createDirIfNotExists() {
+	err := os.MkdirAll(fileService.configuration.FilesPath, 0700)
 	if err != nil {
-		return nil, err
+		logrus.Print("Error creating file's directory: " + err.Error())
+		panic(err)
 	}
-
-	return aes.Decrypt(fileEncrypt), err
-}
-
-func GetFileStream(fileDecrypt []byte, file models.File) (contentLength int64, contentType string, reader *bytes.Reader, extraHeaders map[string]string) {
-	reader = bytes.NewReader(fileDecrypt)
-	contentLength = reader.Size()
-	contentType = "application/octet-stream"
-
-	extraHeaders = map[string]string{
-		headers.ContentDisposition: `attachment; filename="` + file.Name + `"`,
-	}
-
-	return
 }

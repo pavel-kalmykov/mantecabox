@@ -6,25 +6,51 @@ import (
 	"net"
 	"time"
 
-	"mantecabox/dao/factory"
+	"mantecabox/dao"
 	"mantecabox/models"
 
 	"github.com/benashford/go-func"
+	"github.com/hako/durafmt"
 	"github.com/oschwald/geoip2-golang"
 	"github.com/tobie/ua-parser/go/uaparser"
 )
 
-const (
-	MaxUnsuccessfulAttempts = 3
-)
-
 var (
-	loginAttemptDao    = factory.LoginAttemptFactory(configuration.Engine)
+	loginAttemptDao    = dao.LoginAttemptPgDao{}
 	TooManyAttemptsErr = errors.New("too many unsuccessful login attemtps")
-	timeLimit          = time.Minute * 5
 )
 
-func ProcessLoginAttempt(attempt *models.LoginAttempt) error {
+type (
+	LoginAttemptService interface {
+		ProcessLoginAttempt(attempt *models.LoginAttempt) error
+		sendNewRegisteredDeviceActivity(attempt *models.LoginAttempt) error
+		sendSuspiciousActivityReport(unsuccessfulAttempt *models.LoginAttempt) error
+		Configuration() *models.Configuration
+	}
+
+	LoginAttemptServiceImpl struct {
+		configuration *models.Configuration
+		mailService   MailService
+	}
+)
+
+func NewLoginAttemptService(configuration *models.Configuration) LoginAttemptService {
+	mailService := NewMailService(configuration)
+	if mailService == nil {
+		return nil
+	}
+	return LoginAttemptServiceImpl{
+		configuration: configuration,
+		mailService:   mailService,
+	}
+}
+
+func (loginAttemptService LoginAttemptServiceImpl) ProcessLoginAttempt(attempt *models.LoginAttempt) error {
+	MaxUnsuccessfulAttempts := loginAttemptService.configuration.MaxUnsuccessfulAttempts
+	timeLimit, err := time.ParseDuration(loginAttemptService.configuration.BlockedLoginTimeLimit)
+	if err != nil {
+		panic("unable to parse blocked login's time limit configuration value: " + err.Error())
+	}
 	createdAttempt, err := loginAttemptDao.Create(attempt)
 	if err != nil {
 		return err
@@ -39,12 +65,13 @@ func ProcessLoginAttempt(attempt *models.LoginAttempt) error {
 	}).([]models.LoginAttempt)
 	if len(unsuccessfulAttempts) >= MaxUnsuccessfulAttempts && len(attempts)-len(unsuccessfulAttempts) == 0 {
 		go func() {
-			sendSuspiciousActivityReport(&createdAttempt) // Very slow, run in background
+			loginAttemptService.sendSuspiciousActivityReport(&createdAttempt) // Very slow, run in background
 		}()
 		return TooManyAttemptsErr
 	}
-	if timeDiff := attempts[len(attempts)-1].CreatedAt.Sub(attempts[0].CreatedAt); len(unsuccessfulAttempts) == MaxUnsuccessfulAttempts && timeDiff < timeLimit {
-		return errors.New(fmt.Sprintf("Login for user %v blocked for the next %.2f minutes", createdAttempt.User.Email, (timeLimit - timeDiff).Minutes()))
+	timeDiff := attempts[len(attempts)-1].CreatedAt.Sub(attempts[0].CreatedAt)
+	if len(unsuccessfulAttempts) == MaxUnsuccessfulAttempts && timeDiff < timeLimit {
+		return errors.New(fmt.Sprintf("Login for user %v blocked for the next %v", createdAttempt.User.Email, durafmt.ParseShort((timeLimit - timeDiff).Round(time.Minute))))
 	}
 	// Then, we look if similar attempt data were added before or if this login occurred in a new device or place
 	similarAttempts, err := loginAttemptDao.GetSimilarAttempts(&createdAttempt)
@@ -53,23 +80,23 @@ func ProcessLoginAttempt(attempt *models.LoginAttempt) error {
 	}
 	if len(similarAttempts) == 1 {
 		go func() {
-			sendNewRegisteredDeviceActivity(&createdAttempt) // Very slow, run in background
+			loginAttemptService.sendNewRegisteredDeviceActivity(&createdAttempt) // Very slow, run in background
 		}()
 	}
 	return nil
 }
 
-func sendNewRegisteredDeviceActivity(attempt *models.LoginAttempt) error {
+func (loginAttemptService LoginAttemptServiceImpl) sendNewRegisteredDeviceActivity(attempt *models.LoginAttempt) error {
 	messageBody := fmt.Sprintf("<strong>A new device has been registered in your account (%v)</strong><br>", attempt.User.Email)
 	msg, err := formatAttempt(attempt)
 	if err != nil {
 		return err
 	}
 	messageBody += msg
-	return SendMail(attempt.User.Email, messageBody)
+	return loginAttemptService.mailService.SendMail(attempt.User.Email, messageBody)
 }
 
-func sendSuspiciousActivityReport(unsuccessfulAttempt *models.LoginAttempt) error {
+func (loginAttemptService LoginAttemptServiceImpl) sendSuspiciousActivityReport(unsuccessfulAttempt *models.LoginAttempt) error {
 	email := unsuccessfulAttempt.User.Email
 	messageBody := fmt.Sprintf("<strong>We have detected a suspiciuous activity in your account (%v)</strong><br>", email)
 	msg, err := formatAttempt(unsuccessfulAttempt)
@@ -77,7 +104,7 @@ func sendSuspiciousActivityReport(unsuccessfulAttempt *models.LoginAttempt) erro
 		return err
 	}
 	messageBody += msg
-	return SendMail(email, messageBody)
+	return loginAttemptService.mailService.SendMail(email, messageBody)
 }
 
 func formatAttempt(attempt *models.LoginAttempt) (string, error) {
@@ -123,4 +150,8 @@ func formatAttempt(attempt *models.LoginAttempt) (string, error) {
 		}
 	}
 	return messageBody, nil
+}
+
+func (loginAttemptService LoginAttemptServiceImpl) Configuration() *models.Configuration {
+	return loginAttemptService.configuration
 }

@@ -1,37 +1,47 @@
 package webservice
 
 import (
+	"mantecabox/models"
+
 	"github.com/gin-gonic/gin"
 )
 
-func Router(useJWT bool) *gin.Engine {
+func Router(useJWT bool, configuration *models.Configuration) *gin.Engine {
+	userController := NewUserController(configuration)
+	if userController == nil {
+		return nil
+	}
+	fileController := NewFileController(configuration)
+	if fileController == nil {
+		return nil
+	}
+
 	r := gin.Default()
 
-	r.POST("/register", RegisterUser)
-	r.POST("/2fa-verification", Generate2FAAndSendMail)
-	r.POST("/login", AuthMiddleware.LoginHandler)
-	r.GET("/refresh-token", AuthMiddleware.RefreshHandler)
+	r.POST("/register", userController.RegisterUser)
+	r.POST("/2fa-verification", userController.Generate2FAAndSendMail)
+	r.POST("/login", userController.AuthMiddleware().LoginHandler)
+	r.GET("/refresh-token", userController.AuthMiddleware().RefreshHandler)
 
 	users := r.Group("/users")
 	if useJWT {
-		users.Use(AuthMiddleware.MiddlewareFunc())
+		users.Use(userController.AuthMiddleware().MiddlewareFunc())
 	}
 
-	users.GET("", GetUsers) // Useful?
-	users.GET("/:email", GetUser)
-	users.PUT("/:email", ModifyUser)
-	users.DELETE("/:email", DeleteUser)
-
+	users.GET("", userController.GetUsers) // Useful?
+	users.GET("/:email", userController.GetUser)
+	users.PUT("/:email", userController.ModifyUser)
+	users.DELETE("/:email", userController.DeleteUser)
 
 	files := r.Group("/files")
 	if useJWT {
-		files.Use(AuthMiddleware.MiddlewareFunc())
+		files.Use(userController.AuthMiddleware().MiddlewareFunc())
 	}
 
-	files.GET("/:file", GetFile)
-	files.GET("", GetAllFiles)
-	files.POST("", UploadFile)
-	files.DELETE("/:file", DeleteFile)
+	files.GET("/:file", fileController.GetFile)
+	files.GET("", fileController.GetAllFiles)
+	files.POST("", fileController.UploadFile)
+	files.DELETE("/:file", fileController.DeleteFile)
 
 	return r
 }
