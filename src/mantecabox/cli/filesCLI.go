@@ -94,10 +94,10 @@ func Transfer(transferActions [] string) error {
 				for i := 1; i < len(transferActions); i++ {
 					fileName, err := uploadFile(transferActions[i], token)
 					if err != nil {
-						return err
+						fmt.Printf("Error has succes in intent of upload file '%v' \n", transferActions[i])
+					} else {
+						fmt.Printf("File '%v' has uploaded correctly.\n", fileName)
 					}
-
-					fmt.Printf("File '%v' has uploaded correctly.\n", fileName)
 				}
 			} else {
 				return errors.New(fmt.Sprintf("params not found"))
@@ -107,10 +107,10 @@ func Transfer(transferActions [] string) error {
 				for i := 1; i < len(transferActions); i++ {
 					err := downloadFile(transferActions[i], token)
 					if err != nil {
-						return err
+						fmt.Printf("Error has succes in intent of download file '%v' \n", transferActions[i])
+					} else {
+						fmt.Printf("File '%v' has downloaded correctly.\n", transferActions[i])
 					}
-
-					fmt.Printf("File '%v' has downloaded correctly.\n", transferActions[i])
 				}
 			} else {
 				list, err := getFiles(token)
