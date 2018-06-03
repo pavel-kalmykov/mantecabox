@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/sqweek/dialog"
 	"github.com/tidwall/gjson"
 	"gopkg.in/AlecAivazis/survey.v1"
 	"gopkg.in/resty.v1"
@@ -100,17 +99,7 @@ func Transfer(transferActions [] string) error {
 					}
 				}
 			} else {
-				filename, err := dialog.File().Load()
-				if err != nil {
-					return err
-				}
-
-				fileName, err := uploadFile(filename, token)
-				if err != nil {
-					fmt.Printf(ErrorMessage("Error uploading file '%v'\n", filename))
-				} else {
-					fmt.Printf(SuccesMessage("File '%v' uploaded correctly.\n", fileName))
-				}
+				return errors.New("params not found")
 			}
 		case "download":
 			if lengthActions > 1 {
