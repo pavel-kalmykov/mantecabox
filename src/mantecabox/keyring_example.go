@@ -9,7 +9,7 @@ import (
 func main() {
 
 	service := "mantecabox"
-	user := "raul_pairo@icloud.com"
+	user := "token_response"
 
 	secret, err := keyring.Get(service, user)
 	if err != nil {
