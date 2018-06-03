@@ -64,7 +64,7 @@ func deleteFile(filename string, token string) error {
 	}
 
 	if response.StatusCode() != http.StatusNoContent {
-		return errors.New(ErrorMessage("error removing file '%v'.", filename))
+		return errors.New(fmt.Sprintf("error removing file '%v'.", filename))
 	}
 
 	return nil
