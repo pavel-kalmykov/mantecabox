@@ -82,7 +82,7 @@ func Transfer(transferActions []string) error {
 		case "list":
 			list, err := getFiles(token)
 			if err != nil {
-				return err
+				fmt.Printf(err.Error())
 			}
 
 			for _, f := range list {
@@ -191,8 +191,12 @@ func getFiles(token string) ([]gjson.Result, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	if response.StatusCode() == http.StatusOK {
 		list := gjson.Get(response.String(), "#.name").Array()
+		if !(len(list) > 0) {
+			return nil, errors.New("there are no files in the database. Upload one")
+		}
 		return list, nil
 	} else {
 		return nil, errors.New(ErrorMessage("server did not sent HTTP 200 OK status. ") + response.String())
