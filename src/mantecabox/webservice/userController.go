@@ -19,7 +19,7 @@ import (
 var AuthMiddleware = &jwt.GinJWTMiddleware{
 	Realm:      "Mantecabox",
 	Key:        aes.Key,
-	Timeout:    time.Hour * 24,
+	Timeout:    time.Hour,
 	MaxRefresh: time.Hour,
 	HTTPStatusMessageFunc: func(err error, c *gin.Context) string {
 		switch err {
