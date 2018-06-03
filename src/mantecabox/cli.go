@@ -104,8 +104,7 @@ func login(credentialsFunc func() models.Credentials) error {
 
 	var verificationResult models.ServerError
 	var serverError models.ServerError
-	s := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
-	s.Start()
+	s := getSpinner()
 	response, err := resty.R().
 		SetBody(&credentials).
 		SetResult(&verificationResult).
@@ -212,27 +211,37 @@ func getToken() (string, error) {
 }
 
 func getFiles(token string) ([]gjson.Result, error) {
+	s := getSpinner()
 	response, err := resty.R().
 		SetAuthToken(token).
 		Get("/files")
+	s.Stop()
 	if err != nil {
 		return nil, err
 	}
 	if response.StatusCode() == http.StatusOK {
 		list := gjson.Get(response.String(), "#.name").Array()
-		return  list, nil
+		return list, nil
 	} else {
 		return nil, errors.New("server did not sent HTTP 200 OK status. " + response.String())
 	}
 }
 
+func getSpinner() *spinner.Spinner {
+	s := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
+	s.Start()
+	return s
+}
+
 func uploadFile(filePath string, token string) (string, error) {
+	s := getSpinner()
 	response, err := resty.R().
 		SetFiles(map[string]string{
 		"file": filePath,
 	}).
 		SetAuthToken(token).
 		Post("/files")
+	s.Stop()
 
 	if err != nil {
 		return "", err
@@ -248,10 +257,12 @@ func uploadFile(filePath string, token string) (string, error) {
 }
 
 func downloadFile(fileSelected string, token string) error {
+	s := getSpinner()
 	response, err := resty.R().
 		SetAuthToken(token).
 		SetOutput(fileSelected).
 		Get("/files/" + fileSelected)
+	s.Stop()
 	if err != nil {
 		return err
 	}
@@ -264,9 +275,11 @@ func downloadFile(fileSelected string, token string) error {
 }
 
 func deleteFile(filename string, token string) error {
+	s := getSpinner()
 	response, err := resty.R().
 		SetAuthToken(token).
 		Delete("/files/" + filename)
+	s.Stop()
 	if err != nil {
 		return err
 	}
