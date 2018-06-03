@@ -15,10 +15,10 @@ import (
 	"github.com/appleboy/gin-jwt"
 	"github.com/briandowns/spinner"
 	"github.com/fatih/color"
+	"github.com/go-resty/resty"
 	"github.com/howeyc/gopass"
 	"github.com/tidwall/gjson"
 	"github.com/zalando/go-keyring"
-	"gopkg.in/resty.v1"
 )
 
 const (
@@ -115,5 +115,5 @@ func SuccesMessage(text string, args ...string) string {
 
 func ErrorMessage(text string, args ...string) string {
 	c := color.New(color.FgRed)
-	return c.Sprintf("❌ "+ text, strings.Join(args, ""))
+	return c.Sprintf("❌ "+text, strings.Join(args, ""))
 }

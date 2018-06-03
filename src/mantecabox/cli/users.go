@@ -9,9 +9,9 @@ import (
 	"mantecabox/models"
 	"mantecabox/services"
 
+	"github.com/go-resty/resty"
 	"github.com/hako/durafmt"
 	"github.com/nbutton23/zxcvbn-go"
-	"gopkg.in/resty.v1"
 
 	"github.com/gin-gonic/gin"
 )

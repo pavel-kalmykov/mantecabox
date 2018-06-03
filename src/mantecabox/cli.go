@@ -9,8 +9,8 @@ import (
 
 	"github.com/alexflint/go-arg"
 	"github.com/go-http-utils/headers"
+	"github.com/go-resty/resty"
 	"github.com/mitchellh/go-homedir"
-	"gopkg.in/resty.v1"
 )
 
 func init() {

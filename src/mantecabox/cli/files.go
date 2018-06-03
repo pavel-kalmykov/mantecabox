@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/go-resty/resty"
 	"github.com/tidwall/gjson"
 	"gopkg.in/AlecAivazis/survey.v1"
-	"gopkg.in/resty.v1"
 )
 
 func uploadFile(filePath string, token string) (string, error) {
@@ -15,8 +15,8 @@ func uploadFile(filePath string, token string) (string, error) {
 	s := GetSpinner()
 	response, err := resty.R().
 		SetFiles(map[string]string{
-		"file": filePath,
-	}).
+			"file": filePath,
+		}).
 		SetAuthToken(token).
 		Post("/files")
 	s.Stop()
@@ -69,7 +69,7 @@ func deleteFile(filename string, token string) error {
 	return nil
 }
 
-func Transfer(transferActions [] string) error {
+func Transfer(transferActions []string) error {
 	token, err := GetToken()
 	if err != nil {
 		return err
@@ -135,6 +135,7 @@ func Transfer(transferActions [] string) error {
 				}
 				fmt.Println(SuccesMessage("File '%v' downloaded correctly.", fileSelected))
 			}
+			fmt.Println("Remember: all your files are located in your Mantecabox User's directory")
 		case "remove":
 			if lengthActions > 1 {
 				for i := 1; i < len(transferActions); i++ {
