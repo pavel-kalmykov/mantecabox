@@ -41,12 +41,14 @@ type File struct {
 
 type FileDTO struct {
 	TimeStamp
-	Name string `json:"name"`
+	Name           string `json:"name"`
+	PermissionsStr string `json:"permissions"`
 }
 
 func FileToDto(file File) FileDTO {
 	return FileDTO{
-		TimeStamp: file.TimeStamp,
-		Name:      file.Name,
+		TimeStamp:      file.TimeStamp,
+		Name:           file.Name,
+		PermissionsStr: file.PermissionsStr,
 	}
 }

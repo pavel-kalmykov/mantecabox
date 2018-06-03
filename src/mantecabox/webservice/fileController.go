@@ -15,11 +15,12 @@ import (
 
 type (
 	FileController interface {
+		GetAllFiles(context *gin.Context)
+		GetFile(context *gin.Context)
+		DownloadFile(context *gin.Context)
 		UploadFile(context *gin.Context)
 		DeleteFile(context *gin.Context)
-		GetFile(context *gin.Context)
 		checkSameFileExist(filename string, user models.User) (file models.File, err error)
-		GetAllFiles(context *gin.Context)
 	}
 
 	FileControllerImpl struct {
@@ -51,6 +52,23 @@ func (fileController FileControllerImpl) GetAllFiles(context *gin.Context) {
 }
 
 func (fileController FileControllerImpl) GetFile(context *gin.Context) {
+
+	filename := context.Param("file")
+
+	file, err := fileController.checkSameFileExist(filename, getUser(context))
+	if err != nil {
+		if err == sql.ErrNoRows {
+			sendJsonMsg(context, http.StatusNotFound, fmt.Sprintf(`Unable to find file "%v": %v`, filename, err))
+			return
+		} else {
+			sendJsonMsg(context, http.StatusInternalServerError, fmt.Sprintf(`Unable to find file "%v": %v`, filename, err))
+			return
+		}
+	}
+	context.JSON(200, models.FileToDto(file))
+}
+
+func (fileController FileControllerImpl) DownloadFile(context *gin.Context) {
 
 	filename := context.Param("file")
 
