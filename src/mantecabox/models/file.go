@@ -10,7 +10,7 @@ type File struct {
 
 type FileDTO struct {
 	TimeStamp
-	Name  string `json:"name"`
+	Name string `json:"name"`
 }
 
 func FileToDto(file File) FileDTO {

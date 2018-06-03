@@ -41,11 +41,11 @@ func GetAllFiles(user models.User) ([]models.File, error) {
 	return fileDao.GetAll(&user)
 }
 
-func CreateFile (file *models.File) (models.File, error) {
+func CreateFile(file *models.File) (models.File, error) {
 	return fileDao.Create(file)
 }
 
-func DeleteFile (file int64, fileID string) error {
+func DeleteFile(file int64, fileID string) error {
 
 	err := fileDao.Delete(file)
 	if err != nil {

@@ -107,7 +107,7 @@ func (dao LoginAttemptPgDao) Create(attempt *models.LoginAttempt) (models.LoginA
 		err := db.QueryRow(`INSERT INTO login_attempts ("user", user_agent, ip, successful) VALUES ($1, $2, $3, $4)
 RETURNING *;`, attempt.User.Email, attempt.UserAgent, attempt.IP, attempt.Successful).
 			Scan(&createdAttempt.Id, &createdAttempt.CreatedAt, &createdAttempt.User.Email,
-				&createdAttempt.UserAgent, &createdAttempt.IP, &createdAttempt.Successful)
+			&createdAttempt.UserAgent, &createdAttempt.IP, &createdAttempt.Successful)
 		if err != nil {
 			logrus.Info("Unable to execute FilePgDao.Create(file models.File) query. Reason:", err)
 			return createdAttempt, err

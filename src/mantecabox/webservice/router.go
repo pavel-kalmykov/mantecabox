@@ -22,7 +22,6 @@ func Router(useJWT bool) *gin.Engine {
 	users.PUT("/:email", ModifyUser)
 	users.DELETE("/:email", DeleteUser)
 
-
 	files := r.Group("/files")
 	if useJWT {
 		files.Use(AuthMiddleware.MiddlewareFunc())
