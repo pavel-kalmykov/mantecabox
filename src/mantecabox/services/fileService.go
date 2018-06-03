@@ -127,7 +127,7 @@ func (fileService FileServiceImpl) DeleteFile(filename string, user *models.User
 }
 
 func (fileService FileServiceImpl) createDirIfNotExists() {
-	err := os.Mkdir(fileService.configuration.FilesPath, 0700)
+	err := os.MkdirAll(fileService.configuration.FilesPath, 0700)
 	if err != nil {
 		logrus.Print("Error creating file's directory: " + err.Error())
 		panic(err)

@@ -1,10 +1,31 @@
 package dao
 
 import (
+	"os"
 	"testing"
 
+	"mantecabox/utilities"
+
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 )
+
+func TestMain(m *testing.M) {
+	configuration, err := utilities.GetConfiguration()
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	databaseManager := utilities.NewDatabaseManager(&configuration.Database)
+	err = databaseManager.StartDockerPostgresDb()
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	err = databaseManager.RunMigrations()
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	os.Exit(m.Run())
+}
 
 func TestUserDaoFactory(t *testing.T) {
 	type args struct {
