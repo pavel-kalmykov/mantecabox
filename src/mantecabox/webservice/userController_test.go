@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"mantecabox/dao/interfaces"
+	"mantecabox/dao"
 	"mantecabox/services"
 
 	"github.com/appleboy/gofight"
@@ -19,7 +19,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"gopkg.in/dgrijalva/jwt-go.v3"
 
-	"mantecabox/dao/factory"
 	"mantecabox/models"
 	"mantecabox/utilities"
 
@@ -38,7 +37,7 @@ var (
 	tokenTimeout        time.Duration
 	testUserService     services.UserService
 	testDatabaseManager utilities.DatabaseManager
-	userDao             interfaces.UserDao
+	userDao             dao.UserDao
 	router              *gin.Engine
 	secureRouter        *gin.Engine
 	tokenParserFunc     func(token *jwt.Token) (interface{}, error)
@@ -62,7 +61,7 @@ func TestMain(m *testing.M) {
 	}
 	tokenTimeout, err = time.ParseDuration(configuration.TokenTimeout)
 	testUserService = services.NewUserService(&configuration)
-	userDao = factory.UserDaoFactory(configuration.Database.Engine)
+	userDao = dao.UserDaoFactory(configuration.Database.Engine)
 	router = Router(false, &configuration)
 	secureRouter = Router(true, &configuration)
 	tokenParserFunc = func(token *jwt.Token) (interface{}, error) {
