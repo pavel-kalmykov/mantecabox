@@ -1,8 +1,9 @@
-package postgres
+package dao
 
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"mantecabox/models"
 )
@@ -22,7 +23,7 @@ FROM files f
 WHERE f.deleted_at IS NULL AND u.deleted_at IS NULL AND f.name = $1 AND u.email = $2`
 	insertFileQuery = `INSERT INTO files (name, owner) VALUES ($1, $2) RETURNING *;`
 	updateFileQuery = `UPDATE files SET name = $1, owner = $2 WHERE id = $3 RETURNING *`
-	deleteFileQuery = "DELETE FROM files WHERE id = $1"
+	deleteFileQuery = "UPDATE files SET deleted_at = NOW() WHERE name = $1 AND owner = $2"
 )
 
 type FilePgDao struct {
@@ -104,9 +105,9 @@ func (dao FilePgDao) Update(id int64, file *models.File) (models.File, error) {
 	return res.(models.File), err
 }
 
-func (dao FilePgDao) Delete(id int64) error {
+func (dao FilePgDao) Delete(filename string, user *models.User) error {
 	_, err := withDb(func(db *sql.DB) (interface{}, error) {
-		result, err := db.Exec(deleteFileQuery, id)
+		result, err := db.Exec(deleteFileQuery, filename, user.Email)
 		if err != nil {
 			daoLog.Info("Unable to execute FilePgDao.Delete(id int64) query. Reason:", err)
 		} else {
@@ -122,9 +123,9 @@ func (dao FilePgDao) Delete(id int64) error {
 					err = errors.New("more than one deleted")
 				}
 				if err != nil {
-					daoLog.Debug("Unable to delete file with id \""+string(id)+"\" correctly. Reason:", err)
+					daoLog.Debug(fmt.Sprintf(`Unable to delete %v's' file "%v". Reason %v`, user.Email, filename, err))
 				} else {
-					daoLog.Debug("File with id \"" + string(id) + "\" successfully deleted")
+					daoLog.Debug(fmt.Sprintf(`%v's' file "%v" successfully deleted.`, user.Email, filename))
 				}
 			}
 		}

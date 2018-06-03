@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"mantecabox/models"
 	"mantecabox/services"
@@ -74,24 +73,19 @@ func (fileController FileControllerImpl) UploadFile(context *gin.Context) {
 	err = fileController.fileService.SaveFile(file, fileModel)
 	if err != nil {
 		sendJsonMsg(context, http.StatusInternalServerError, err.Error())
+		return
 	}
 
 	context.JSON(http.StatusCreated, models.FileToDto(fileModel))
 }
 
 func (fileController FileControllerImpl) DeleteFile(context *gin.Context) {
-	fileID := context.Param("file")
-
-	file, err := strconv.ParseInt(fileID, 10, 64)
-	if err != nil {
-		sendJsonMsg(context, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	err = fileController.fileService.DeleteFile(file, fileID)
+	filename := context.Param("file")
+	user := fileController.getUser(context)
+	err := fileController.fileService.DeleteFile(filename, &user)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			sendJsonMsg(context, http.StatusNotFound, "Unable to find file: "+fileID)
+			sendJsonMsg(context, http.StatusNotFound, "Unable to find file: "+filename)
 		} else {
 			sendJsonMsg(context, http.StatusBadRequest, "Unable to delete file: "+err.Error())
 		}

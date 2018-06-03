@@ -6,7 +6,7 @@ import (
 	"net"
 	"time"
 
-	"mantecabox/dao/postgres"
+	"mantecabox/dao"
 	"mantecabox/models"
 
 	"github.com/benashford/go-func"
@@ -16,7 +16,7 @@ import (
 )
 
 var (
-	loginAttemptDao    = postgres.LoginAttemptPgDao{}
+	loginAttemptDao    = dao.LoginAttemptPgDao{}
 	TooManyAttemptsErr = errors.New("too many unsuccessful login attemtps")
 )
 

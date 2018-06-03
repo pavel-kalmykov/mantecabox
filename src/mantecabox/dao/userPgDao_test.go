@@ -1,4 +1,4 @@
-package postgres
+package dao
 
 import (
 	"database/sql"

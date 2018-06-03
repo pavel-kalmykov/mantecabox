@@ -1,4 +1,4 @@
-package postgres
+package dao
 
 import (
 	"testing"
@@ -284,7 +284,8 @@ func TestUpdate(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	type args struct {
-		id int64
+		filename string
+		user     *models.User
 	}
 	testCases := []struct {
 		name        string
@@ -295,13 +296,19 @@ func TestDelete(t *testing.T) {
 		{
 			"When you delete an inserted file, return no error",
 			testFileInsertQuery,
-			args{},
+			args{
+				filename: "testfile1a",
+				user:     &models.User{Credentials: models.Credentials{Email: "testuser1"}},
+			},
 			false,
 		},
 		{
 			"When you delete a non-existent file, return an error",
 			testFileInsertQuery,
-			args{id: -1},
+			args{
+				filename: "nonexistent",
+				user:     &models.User{},
+			},
 			true,
 		},
 	}
@@ -312,14 +319,11 @@ func TestDelete(t *testing.T) {
 	for _, testCase := range testCases {
 		cleanAndPopulateDb(db, testUsersInsertQuery, t)
 		if testCase.insertQuery != "" {
-			db.QueryRow(testCase.insertQuery).Scan(&testCase.args.id)
-			if testCase.wantErr {
-				testCase.args.id = 0
-			}
+			db.QueryRow(testCase.insertQuery)
 		}
 		t.Run(testCase.name, func(t *testing.T) {
 			dao := FilePgDao{}
-			err := dao.Delete(testCase.args.id)
+			err := dao.Delete(testCase.args.filename, testCase.args.user)
 			if testCase.wantErr {
 				require.Error(t, err)
 			} else {

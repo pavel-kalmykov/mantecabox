@@ -9,8 +9,7 @@ import (
 	"regexp"
 	"time"
 
-	"mantecabox/dao/factory"
-	"mantecabox/dao/interfaces"
+	"mantecabox/dao"
 	"mantecabox/models"
 	"mantecabox/utilities"
 
@@ -36,13 +35,13 @@ type (
 		UserExists(email, password string) (models.User, bool)
 		Generate2FACodeAndSaveToUser(user *models.User) (models.User, error)
 		TwoFactorMatchesAndIsNotOutdated(expected, actual string, expire time.Time) bool
-		UserDao() interfaces.UserDao
+		UserDao() dao.UserDao
 		AesCipher() utilities.AesCTRCipher
 	}
 
 	UserServiceImpl struct {
 		configuration *models.Configuration
-		userDao       interfaces.UserDao
+		userDao       dao.UserDao
 		aesCipher     utilities.AesCTRCipher
 	}
 )
@@ -61,7 +60,7 @@ func NewUserService(configuration *models.Configuration) UserService {
 	}
 	return UserServiceImpl{
 		configuration: configuration,
-		userDao:       factory.UserDaoFactory(configuration.Database.Engine),
+		userDao:       dao.UserDaoFactory(configuration.Database.Engine),
 		aesCipher:     utilities.NewAesCTRCipher(configuration.AesKey),
 	}
 }
@@ -162,7 +161,7 @@ func (userService UserServiceImpl) TwoFactorMatchesAndIsNotOutdated(expected, ac
 	return expected == actual && time.Now().Sub(expire) < timeLimit
 }
 
-func (userService UserServiceImpl) UserDao() interfaces.UserDao {
+func (userService UserServiceImpl) UserDao() dao.UserDao {
 	return userService.userDao
 }
 

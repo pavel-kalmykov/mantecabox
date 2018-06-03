@@ -1,4 +1,4 @@
-package postgres
+package dao
 
 import (
 	"database/sql"
@@ -14,7 +14,7 @@ const (
 	getUserByPkQuery = "SELECT * FROM users WHERE deleted_at IS NULL AND email = $1"
 	insertUserQuery  = "INSERT INTO users(email,password) VALUES($1,$2) RETURNING *;"
 	updateUserQuery  = "UPDATE users SET email=$1, password=$2, two_factor_auth=$3 WHERE email=$4 RETURNING *"
-	deleteUserQuery  = "DELETE FROM users WHERE email = $1"
+	deleteUserQuery  = "UPDATE users SET deleted_at = NOW() WHERE email = $1"
 )
 
 var daoLog = logrus.WithFields(logrus.Fields{"package": "postgres"})

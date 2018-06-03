@@ -1,10 +1,7 @@
-package factory
+package dao
 
 import (
 	"testing"
-
-	"mantecabox/dao/interfaces"
-	"mantecabox/dao/postgres"
 
 	"github.com/stretchr/testify/require"
 )
@@ -16,12 +13,12 @@ func TestUserDaoFactory(t *testing.T) {
 	testCases := []struct {
 		name string
 		args args
-		want interfaces.UserDao
+		want UserDao
 	}{
 		{
 			`When asking for "postgres" DAO, return userPgDao instance`,
 			args{engine: "postgres"},
-			postgres.UserPgDao{},
+			UserPgDao{},
 		},
 		{
 			`When asking for "mysql" DAO, return nil`,
@@ -35,7 +32,7 @@ func TestUserDaoFactory(t *testing.T) {
 			case nil:
 				require.Nil(t, UserDaoFactory(testCase.args.engine))
 			default:
-				require.IsType(t, postgres.UserPgDao{}, UserDaoFactory(testCase.args.engine))
+				require.IsType(t, UserPgDao{}, UserDaoFactory(testCase.args.engine))
 			}
 		})
 	}
@@ -48,12 +45,12 @@ func TestFileDaoFactory(t *testing.T) {
 	testCases := []struct {
 		name string
 		args args
-		want interfaces.FileDao
+		want FileDao
 	}{
 		{
 			name: `When asking for "postgres" DAO, return userPgDao instance`,
 			args: args{engine: "postgres"},
-			want: postgres.FilePgDao{},
+			want: FilePgDao{},
 		},
 		{
 			name: `When asking for "mysql" DAO, return nil`,
@@ -67,7 +64,7 @@ func TestFileDaoFactory(t *testing.T) {
 			case nil:
 				require.Nil(t, FileDaoFactory(testCase.args.engine))
 			default:
-				require.IsType(t, postgres.FilePgDao{}, FileDaoFactory(testCase.args.engine))
+				require.IsType(t, FilePgDao{}, FileDaoFactory(testCase.args.engine))
 			}
 		})
 	}
@@ -80,12 +77,12 @@ func TestLoginAttemptFactory(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want interfaces.LoginAttempDao
+		want LoginAttempDao
 	}{
 		{
 			`When asking for "postgres" DAO, return userPgDao instance`,
 			args{engine: "postgres"},
-			postgres.LoginAttemptPgDao{},
+			LoginAttemptPgDao{},
 		},
 		{
 			`When asking for "mysql" DAO, return nil`,

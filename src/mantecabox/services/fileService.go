@@ -7,9 +7,9 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"strconv"
 
-	"mantecabox/dao/factory"
-	"mantecabox/dao/interfaces"
+	"mantecabox/dao"
 	"mantecabox/models"
 	"mantecabox/utilities"
 
@@ -17,24 +17,22 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const userReadablePerms = 0600
-
 type (
 	FileService interface {
 		GetAllFiles(user models.User) ([]models.File, error)
-		CreateFile(file *models.File) (models.File, error)
-		DeleteFile(file int64, fileID string) error
 		GetFile(filename string, user *models.User) (models.File, error)
+		GetFileStream(fileDecrypt []byte, file models.File) (contentLength int64, contentType string, reader *bytes.Reader, extraHeaders map[string]string)
+		GetDecryptedLocalFile(file models.File) ([]byte, error)
+		CreateFile(file *models.File) (models.File, error)
 		UpdateFile(id int64, file models.File) (models.File, error)
 		SaveFile(file multipart.File, uploadedFile models.File) error
-		GetDecryptedLocalFile(file models.File) ([]byte, error)
-		GetFileStream(fileDecrypt []byte, file models.File) (contentLength int64, contentType string, reader *bytes.Reader, extraHeaders map[string]string)
-		createDirIfNotExist()
+		DeleteFile(filename string, user *models.User) error
+		createDirIfNotExists()
 	}
 
 	FileServiceImpl struct {
 		configuration *models.Configuration
-		fileDao       interfaces.FileDao
+		fileDao       dao.FileDao
 		aesCipher     utilities.AesCTRCipher
 	}
 )
@@ -52,10 +50,10 @@ func NewFileService(configuration *models.Configuration) FileService {
 	}
 	fileServiceImpl := FileServiceImpl{
 		configuration: configuration,
-		fileDao:       factory.FileDaoFactory(configuration.Database.Engine),
+		fileDao:       dao.FileDaoFactory(configuration.Database.Engine),
 		aesCipher:     utilities.NewAesCTRCipher(configuration.AesKey),
 	}
-	fileServiceImpl.createDirIfNotExist()
+	fileServiceImpl.createDirIfNotExists()
 	return fileServiceImpl
 }
 
@@ -63,49 +61,12 @@ func (fileService FileServiceImpl) GetAllFiles(user models.User) ([]models.File,
 	return fileService.fileDao.GetAll(&user)
 }
 
-func (fileService FileServiceImpl) CreateFile(file *models.File) (models.File, error) {
-	return fileService.fileDao.Create(file)
-}
-
-func (fileService FileServiceImpl) DeleteFile(file int64, fileID string) error {
-
-	err := fileService.fileDao.Delete(file)
-	if err != nil {
-		return err
-	}
-
-	err = os.Remove(fileService.configuration.FilesPath + fileID)
-	if err != nil {
-		return err
-	}
-
-	return err
-}
-
 func (fileService FileServiceImpl) GetFile(filename string, user *models.User) (models.File, error) {
 	return fileService.fileDao.GetByPk(filename, user)
 }
 
-func (fileService FileServiceImpl) UpdateFile(id int64, file models.File) (models.File, error) {
-	return fileService.fileDao.Update(id, &file)
-}
-
-func (fileService FileServiceImpl) SaveFile(file multipart.File, uploadedFile models.File) error {
-	// Conversión a bytes del fichero
-	buf := bytes.NewBuffer(nil)
-	if _, err := io.Copy(buf, file); err != nil {
-		return err
-	}
-	encrypted := fileService.aesCipher.Encrypt(buf.Bytes())
-	// Guardamos el fichero encriptado
-	if err := ioutil.WriteFile(fileService.configuration.FilesPath+string(uploadedFile.Id), encrypted, userReadablePerms); err != nil {
-		return err
-	}
-	return nil
-}
-
 func (fileService FileServiceImpl) GetDecryptedLocalFile(file models.File) ([]byte, error) {
-	fileEncrypt, err := ioutil.ReadFile(fileService.configuration.FilesPath + string(file.Id))
+	fileEncrypt, err := ioutil.ReadFile(fileService.configuration.FilesPath + strconv.FormatInt(file.Id, 10))
 	if err != nil {
 		return nil, err
 	}
@@ -125,8 +86,48 @@ func (fileService FileServiceImpl) GetFileStream(fileDecrypt []byte, file models
 	return
 }
 
-func (fileService FileServiceImpl) createDirIfNotExist() {
-	err := os.MkdirAll(fileService.configuration.FilesPath, userReadablePerms)
+func (fileService FileServiceImpl) CreateFile(file *models.File) (models.File, error) {
+	return fileService.fileDao.Create(file)
+}
+
+func (fileService FileServiceImpl) UpdateFile(id int64, file models.File) (models.File, error) {
+	return fileService.fileDao.Update(id, &file)
+}
+
+func (fileService FileServiceImpl) SaveFile(file multipart.File, uploadedFile models.File) error {
+	// Conversión a bytes del fichero
+	buf := bytes.NewBuffer(nil)
+	if _, err := io.Copy(buf, file); err != nil {
+		return err
+	}
+	encrypted := fileService.aesCipher.Encrypt(buf.Bytes())
+	// Guardamos el fichero encriptado
+	if err := ioutil.WriteFile(fileService.configuration.FilesPath+strconv.FormatInt(uploadedFile.Id, 10), encrypted, 0600); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (fileService FileServiceImpl) DeleteFile(filename string, user *models.User) error {
+	file, err := fileService.fileDao.GetByPk(filename, user)
+	if err != nil {
+		return err
+	}
+	err = fileService.fileDao.Delete(filename, user)
+	if err != nil {
+		return err
+	}
+
+	err = os.Remove(fileService.configuration.FilesPath + strconv.FormatInt(file.Id, 10))
+	if err != nil {
+		return err
+	}
+
+	return err
+}
+
+func (fileService FileServiceImpl) createDirIfNotExists() {
+	err := os.Mkdir(fileService.configuration.FilesPath, 0700)
 	if err != nil {
 		logrus.Print("Error creating file's directory: " + err.Error())
 		panic(err)
