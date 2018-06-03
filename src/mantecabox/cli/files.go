@@ -112,22 +112,11 @@ func Transfer(transferActions []string) error {
 					}
 				}
 			} else {
-				list, err := getFiles(token)
+
+				fileSelected, err := getFileList(token)
 				if err != nil {
 					return err
 				}
-
-				var listaString []string
-				for _, f := range list {
-					listaString = append(listaString, f.Str)
-				}
-
-				fileSelected := ""
-				prompt := &survey.Select{
-					Message: "Please, choose one file: ",
-					Options: listaString,
-				}
-				survey.AskOne(prompt, &fileSelected, nil)
 
 				err = downloadFile(fileSelected, token)
 				if err != nil {
@@ -147,7 +136,16 @@ func Transfer(transferActions []string) error {
 					fmt.Println(SuccesMessage("File '%v' removed correctly.\n", transferActions[i]))
 				}
 			} else {
-				return errors.New("params not found")
+				fileSelected, err := getFileList(token)
+				if err != nil {
+					return err
+				}
+
+				err = deleteFile(fileSelected, token)
+				if err != nil {
+					return err
+				}
+				fmt.Println(SuccesMessage("File '%v' remove correctly.", fileSelected))
 			}
 		default:
 			return errors.New(ErrorMessage("action '%v' not exist", transferActions[0]))
@@ -157,6 +155,31 @@ func Transfer(transferActions []string) error {
 	}
 
 	return nil
+}
+
+func getFileList(token string) (string, error){
+	list, err := getFiles(token)
+	if err != nil {
+		return "", err
+	}
+
+	var listaString []string
+	for _, f := range list {
+		listaString = append(listaString, f.Str)
+	}
+
+	fileSelected := ""
+	prompt := &survey.Select{
+		Message: "Please, choose one file: ",
+		Options: listaString,
+	}
+
+	err = survey.AskOne(prompt, &fileSelected, nil)
+	if err != nil {
+		return "", err
+	}
+
+	return fileSelected, err
 }
 
 func getFiles(token string) ([]gjson.Result, error) {
