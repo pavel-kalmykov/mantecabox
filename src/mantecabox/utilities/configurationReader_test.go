@@ -27,20 +27,59 @@ func TestGetConfiguration(t *testing.T) {
 		{
 			"When the config file is OK, it must return the proper configuration",
 			`{
-	"engine": "postgres",
-	"server": "localhost",
-	"port": "5432",
-	"user": "sds",
-	"password": "sds",
-	"database": "sds"
-}`,
+  "aes_key": "6368616e676520746869732070617373",
+  "token_timeout": "1h",
+  "blocked_login_time_limit": "5m",
+  "max_unsuccessful_attempts": 3,
+  "files_path": "files/",
+  "database": {
+    "engine": "postgres",
+    "host": "localhost",
+    "port": 5432,
+    "user": "sds",
+    "password": "sds",
+    "name": "sds"
+  },
+  "server": {
+    "host": "localhost",
+    "port": 10443,
+    "cert": "cert.pem",
+    "key": "key.pem"
+  },
+  "mail": {
+    "host": "smtp.gmail.com",
+    "port": 587,
+    "username": "mantecabox@gmail.com",
+    "password": "ElChiringuito"
+  }
+}
+`,
 			models.Configuration{
-				Engine:   "postgres",
-				Server:   "localhost",
-				Port:     "5432",
-				User:     "sds",
-				Password: "sds",
-				Database: "sds",
+				AesKey:                  "6368616e676520746869732070617373",
+				TokenTimeout:            "1h",
+				BlockedLoginTimeLimit:   "5m",
+				MaxUnsuccessfulAttempts: 3,
+				FilesPath:               "files/",
+				Database: models.Database{
+					Engine:   "postgres",
+					Host:     "localhost",
+					Port:     5432,
+					User:     "sds",
+					Password: "sds",
+					Name:     "sds",
+				},
+				Server: models.Server{
+					Host: "localhost",
+					Port: 10443,
+					Cert: "cert.pem",
+					Key:  "key.pem",
+				},
+				Mail: models.Mail{
+					Host:     "smtp.gmail.com",
+					Port:     587,
+					Username: "mantecabox@gmail.com",
+					Password: "ElChiringuito",
+				},
 			},
 			false,
 		},
@@ -53,14 +92,22 @@ func TestGetConfiguration(t *testing.T) {
 		{
 			"When the config file is incomplete, it must return an incomplete object",
 			`{
-	"engine": "postgres",
-	"server": "localhost",
-	"port": "5432"
-}`,
+  "aes_key": "6368616e676520746869732070617373",
+  "token_timeout": "1h",
+  "blocked_login_time_limit": "5m",
+  "max_unsuccessful_attempts": 3,
+  "files_path": "files/"
+}
+`,
 			models.Configuration{
-				Engine: "postgres",
-				Server: "localhost",
-				Port:   "5432",
+				AesKey:                  "6368616e676520746869732070617373",
+				TokenTimeout:            "1h",
+				BlockedLoginTimeLimit:   "5m",
+				MaxUnsuccessfulAttempts: 3,
+				FilesPath:               "files/",
+				Database:                models.Database{},
+				Server:                  models.Server{},
+				Mail:                    models.Mail{},
 			},
 			false,
 		},
@@ -69,7 +116,7 @@ func TestGetConfiguration(t *testing.T) {
 			`{
 	"engine": "postgres",
 	"server": "localhost",
-	"port": "5432", <-- that ending comma -and this comment- is a JSON format error
+	"port": "5432", // <-- that ending comma -and this comment- is a JSON format error
 }`,
 			models.Configuration{},
 			true,
@@ -77,13 +124,11 @@ func TestGetConfiguration(t *testing.T) {
 	}
 
 	for _, tt := range testCases {
-		// Test preparation
 		os.Remove("configuration.test.json")
 		if tt.config != "" {
 			ioutil.WriteFile("configuration.test.json", []byte(tt.config), os.ModePerm)
 		}
 
-		// Test execution
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := GetConfiguration()
 			if tt.wantErr {

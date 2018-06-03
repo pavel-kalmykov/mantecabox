@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"mantecabox/models"
 	"mantecabox/services"
@@ -14,8 +13,35 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+type (
+	FileController interface {
+		UploadFile(context *gin.Context)
+		DeleteFile(context *gin.Context)
+		GetFile(context *gin.Context)
+		getUser(context *gin.Context) models.User
+		checkSameFileExist(filename string, user models.User) (file models.File, err error)
+		GetAllFiles(context *gin.Context)
+	}
+
+	FileControllerImpl struct {
+		configuration *models.Configuration
+		fileService   services.FileService
+	}
+)
+
+func NewFileController(configuration *models.Configuration) FileController {
+	fileService := services.NewFileService(configuration)
+	if fileService == nil {
+		return nil
+	}
+	return FileControllerImpl{
+		configuration: configuration,
+		fileService:   fileService,
+	}
+}
+
 // UploadFile se encarga de la subida y cifrado de los ficheros.
-func UploadFile(context *gin.Context) {
+func (fileController FileControllerImpl) UploadFile(context *gin.Context) {
 	// Obtención del fichero desde el post
 	file, header, err := context.Request.FormFile("file")
 	if err != nil {
@@ -23,48 +49,43 @@ func UploadFile(context *gin.Context) {
 		return
 	}
 
-	fileModel, err := checkSameFileExist(header.Filename, getUser(context))
+	fileModel, err := fileController.checkSameFileExist(header.Filename, fileController.getUser(context))
 	if err != nil {
 		if err != sql.ErrNoRows {
 			sendJsonMsg(context, http.StatusInternalServerError, "Unable to upload file: "+err.Error())
 			return
 		}
-		fileModel, err = services.CreateFile(&models.File{
+		fileModel, err = fileController.fileService.CreateFile(&models.File{
 			Name:  header.Filename,
-			Owner: getUser(context),
+			Owner: fileController.getUser(context),
 		})
 		if err != nil {
 			sendJsonMsg(context, http.StatusInternalServerError, err.Error())
 			return
 		}
 	} else {
-		fileModel, err = services.UpdateFile(fileModel.Id, fileModel)
+		fileModel, err = fileController.fileService.UpdateFile(fileModel.Id, fileModel)
 		if err != nil {
 			sendJsonMsg(context, http.StatusInternalServerError, err.Error())
 			return
 		}
 	}
-	err = services.SaveFile(file, fileModel)
-	if err != nil {
-		sendJsonMsg(context, http.StatusInternalServerError, err.Error())
-	}
-
-	context.JSON(http.StatusCreated, models.FileToDto(fileModel))
-}
-
-func DeleteFile(context *gin.Context) {
-	fileID := context.Param("file")
-
-	file, err := strconv.ParseInt(fileID, 10, 64)
+	err = fileController.fileService.SaveFile(file, fileModel)
 	if err != nil {
 		sendJsonMsg(context, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	err = services.DeleteFile(file, fileID)
+	context.JSON(http.StatusCreated, models.FileToDto(fileModel))
+}
+
+func (fileController FileControllerImpl) DeleteFile(context *gin.Context) {
+	filename := context.Param("file")
+	user := fileController.getUser(context)
+	err := fileController.fileService.DeleteFile(filename, &user)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			sendJsonMsg(context, http.StatusNotFound, "Unable to find file: "+fileID)
+			sendJsonMsg(context, http.StatusNotFound, "Unable to find file: "+filename)
 		} else {
 			sendJsonMsg(context, http.StatusBadRequest, "Unable to delete file: "+err.Error())
 		}
@@ -74,11 +95,11 @@ func DeleteFile(context *gin.Context) {
 	context.Writer.WriteHeader(http.StatusNoContent)
 }
 
-func GetFile(context *gin.Context) {
+func (fileController FileControllerImpl) GetFile(context *gin.Context) {
 
 	filename := context.Param("file")
 
-	file, err := checkSameFileExist(filename, getUser(context))
+	file, err := fileController.checkSameFileExist(filename, fileController.getUser(context))
 	if err != nil {
 		if err == sql.ErrNoRows {
 			sendJsonMsg(context, http.StatusNotFound, fmt.Sprintf(`Unable to find file "%v": %v`, filename, err))
@@ -89,28 +110,28 @@ func GetFile(context *gin.Context) {
 		}
 	}
 
-	fileDecrypt, err := services.GetDecryptedLocalFile(file)
+	fileDecrypt, err := fileController.fileService.GetDecryptedLocalFile(file)
 	if err != nil {
 		sendJsonMsg(context, http.StatusInternalServerError, fmt.Sprintf(`Unable to find file "%v": %v`, filename, err))
 	}
 
-	contentLength, contentType, reader, extraHeaders := services.GetFileStream(fileDecrypt, file)
+	contentLength, contentType, reader, extraHeaders := fileController.fileService.GetFileStream(fileDecrypt, file)
 
 	context.DataFromReader(http.StatusOK, contentLength, contentType, reader, extraHeaders)
 }
 
-func getUser(context *gin.Context) models.User {
+func (fileController FileControllerImpl) getUser(context *gin.Context) models.User {
 	var user models.User
 	user.Email = jwt.ExtractClaims(context)["id"].(string)
 	return user
 }
 
-func checkSameFileExist(filename string, user models.User) (file models.File, err error) {
-	return services.GetFile(filename, &user)
+func (fileController FileControllerImpl) checkSameFileExist(filename string, user models.User) (file models.File, err error) {
+	return fileController.fileService.GetFile(filename, &user)
 }
 
-func GetAllFiles(context *gin.Context) {
-	files, err := services.GetAllFiles(getUser(context))
+func (fileController FileControllerImpl) GetAllFiles(context *gin.Context) {
+	files, err := fileController.fileService.GetAllFiles(fileController.getUser(context))
 	if err != nil {
 		sendJsonMsg(context, http.StatusInternalServerError, "Unable to retrieve files: "+err.Error())
 		return

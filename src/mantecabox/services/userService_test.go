@@ -10,10 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"mantecabox/database"
 	"mantecabox/models"
 	"mantecabox/utilities"
-	"mantecabox/utilities/aes"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
@@ -26,7 +24,14 @@ const (
 	updatedUserEmail = "updated@example.com"
 )
 
-var correctPassword = "testsecret"
+var (
+	correctPassword         = "testsecret"
+	testUserService         UserService
+	testMailService         MailService
+	testLoginAttemptService LoginAttemptService
+	testDatabaseManager     utilities.DatabaseManager
+	// testFileService FileService
+)
 
 func init() {
 	sum512 := sha512.Sum512([]byte(correctPassword))
@@ -35,11 +40,27 @@ func init() {
 }
 
 func TestMain(m *testing.M) {
-	utilities.StartDockerPostgresDb()
+	configuration, err := utilities.GetConfiguration()
+	if err != nil {
+		logrus.Fatal("Unable to open config file", err)
+	}
+	testUserService = NewUserService(&configuration)
+	testMailService = NewMailService(&configuration)
+	testLoginAttemptService = NewLoginAttemptService(&configuration)
+	testDatabaseManager = utilities.NewDatabaseManager(&configuration.Database)
+	// testFileService = NewFileService(&configuration)
 
+	err = testDatabaseManager.StartDockerPostgresDb()
+	if err != nil {
+		logrus.Fatal("Unable to start Docker: " + err.Error())
+	}
+	err = testDatabaseManager.RunMigrations()
+	if err != nil {
+		logrus.Fatal("Unable to run migrations: " + err.Error())
+	}
 	code := m.Run()
 
-	db, err := database.GetPgDb()
+	db, err := utilities.GetPgDb()
 	if err != nil {
 		logrus.Fatal("Unable to connnect with database: " + err.Error())
 	}
@@ -57,7 +78,7 @@ func TestGetUsers(t *testing.T) {
 		{
 			"Get users test",
 			func(t *testing.T) {
-				actualUsers, err := GetUsers()
+				actualUsers, err := testUserService.GetUsers()
 				require.NoError(t, err)
 				require.NotEmpty(t, actualUsers)
 			},
@@ -65,8 +86,8 @@ func TestGetUsers(t *testing.T) {
 	}
 	for _, tt := range tests {
 		cleanDb(db)
-		userDao.Create(&models.User{Credentials: models.Credentials{Email: testUserEmail, Password: "testpassword"}})
-		userDao.Create(&models.User{Credentials: models.Credentials{Email: testUser2Email, Password: "testpassword2"}})
+		testUserService.UserDao().Create(&models.User{Credentials: models.Credentials{Email: testUserEmail, Password: "testpassword"}})
+		testUserService.UserDao().Create(&models.User{Credentials: models.Credentials{Email: testUser2Email, Password: "testpassword2"}})
 		t.Run(tt.name, tt.test)
 	}
 
@@ -86,21 +107,21 @@ func TestGetUser(t *testing.T) {
 		{
 			"Get user test",
 			func(t *testing.T) {
-				actualUser, err := GetUser(testUserEmail)
+				actualUser, err := testUserService.GetUser(testUserEmail)
 				require.NoError(t, err)
 				require.Equal(t, testUserEmail, actualUser.Email)
 				decodedExpectedPassword, err := base64.URLEncoding.DecodeString(expectedCredentials.Password)
 				require.NoError(t, err)
 				decodedActualPassword, err := base64.URLEncoding.DecodeString(actualUser.Password)
 				require.NoError(t, err)
-				err = bcrypt.CompareHashAndPassword(aes.Decrypt(decodedActualPassword), decodedExpectedPassword)
+				err = bcrypt.CompareHashAndPassword(testUserService.AesCipher().Decrypt(decodedActualPassword), decodedExpectedPassword)
 				require.NoError(t, err)
 			},
 		},
 	}
 	for _, tt := range tests {
 		cleanDb(db)
-		RegisterUser(&expectedCredentials)
+		testUserService.RegisterUser(&expectedCredentials)
 		t.Run(tt.name, tt.test)
 	}
 }
@@ -120,7 +141,7 @@ func TestRegisterUser(t *testing.T) {
 					Password: correctPassword,
 				}
 
-				actualUser, err := RegisterUser(&expectedCredentials)
+				actualUser, err := testUserService.RegisterUser(&expectedCredentials)
 				require.NoError(t, err)
 				require.Equal(t, expectedCredentials.Email, actualUser.Email)
 
@@ -128,14 +149,14 @@ func TestRegisterUser(t *testing.T) {
 				require.NoError(t, err)
 				decodedActualPassword, err := base64.URLEncoding.DecodeString(actualUser.Password)
 				require.NoError(t, err)
-				err = bcrypt.CompareHashAndPassword(aes.Decrypt(decodedActualPassword), decodedExpectedPassword)
+				err = bcrypt.CompareHashAndPassword(testUserService.AesCipher().Decrypt(decodedActualPassword), decodedExpectedPassword)
 				require.NoError(t, err)
 			},
 		},
 		{
 			"When the user to register has no username, throw a bad username error",
 			func(t *testing.T) {
-				actualUser, err := RegisterUser(&models.Credentials{})
+				actualUser, err := testUserService.RegisterUser(&models.Credentials{})
 				require.Error(t, err)
 				require.True(t, strings.HasPrefix(err.Error(), InvalidEmailError.Error()))
 				require.Equal(t, models.User{}, actualUser)
@@ -144,7 +165,7 @@ func TestRegisterUser(t *testing.T) {
 		{
 			"When the user to register has no password, throw a base64 error",
 			func(t *testing.T) {
-				actualUser, err := RegisterUser(&models.Credentials{Email: testUserEmail})
+				actualUser, err := testUserService.RegisterUser(&models.Credentials{Email: testUserEmail})
 				require.Error(t, err)
 				require.Equal(t, models.User{}, actualUser)
 			},
@@ -152,7 +173,7 @@ func TestRegisterUser(t *testing.T) {
 		{
 			"When the user to register has a non-hashed password, throw an invalid password error",
 			func(t *testing.T) {
-				actualUser, err := RegisterUser(&models.Credentials{
+				actualUser, err := testUserService.RegisterUser(&models.Credentials{
 					Email: testUserEmail,
 					// base64(password)
 					Password: "bWFudGVjYWJveA==",
@@ -165,7 +186,7 @@ func TestRegisterUser(t *testing.T) {
 		{
 			"When the user has a hashed password, but the algorithm used was not SHA-512, throw an invalid password error",
 			func(t *testing.T) {
-				actualUser, err := RegisterUser(&models.Credentials{
+				actualUser, err := testUserService.RegisterUser(&models.Credentials{
 					Email: testUserEmail,
 					// base64(sha256(password))
 					Password: "MzFkYzhlYmMzZDhhN2U0ZjlhMzU4N2RkYWJkOGMxYmEwYjE5Yjc5ZjU2MWU1Yzk2MDhjYjQ4ZDRiMTRlOWFmMA==",
@@ -199,7 +220,7 @@ func TestModifyUser(t *testing.T) {
 					},
 				}
 
-				actualUser, err := ModifyUser(testUserEmail, &expectedUser)
+				actualUser, err := testUserService.ModifyUser(testUserEmail, &expectedUser)
 				require.NoError(t, err)
 				require.Equal(t, expectedUser.Email, actualUser.Email)
 
@@ -207,14 +228,14 @@ func TestModifyUser(t *testing.T) {
 				require.NoError(t, err)
 				decodedActualPassword, err := base64.URLEncoding.DecodeString(actualUser.Password)
 				require.NoError(t, err)
-				err = bcrypt.CompareHashAndPassword(aes.Decrypt(decodedActualPassword), decodedExpectedPassword)
+				err = bcrypt.CompareHashAndPassword(testUserService.AesCipher().Decrypt(decodedActualPassword), decodedExpectedPassword)
 				require.NoError(t, err)
 			},
 		},
 		{
 			"When the user to modify exists and has no username, throw a bad username error",
 			func(t *testing.T) {
-				actualUser, err := ModifyUser(testUserEmail, &models.User{})
+				actualUser, err := testUserService.ModifyUser(testUserEmail, &models.User{})
 				require.Error(t, err)
 				require.True(t, strings.HasPrefix(err.Error(), InvalidEmailError.Error()))
 				require.Equal(t, models.User{}, actualUser)
@@ -223,7 +244,7 @@ func TestModifyUser(t *testing.T) {
 		{
 			"When the user to modify exists and has no password, throw a base64 error",
 			func(t *testing.T) {
-				actualUser, err := ModifyUser(testUserEmail, &models.User{
+				actualUser, err := testUserService.ModifyUser(testUserEmail, &models.User{
 					Credentials: models.Credentials{
 						Email: testUserEmail,
 					},
@@ -235,7 +256,7 @@ func TestModifyUser(t *testing.T) {
 		{
 			"When the user to modify exists and has a non-hashed password, throw an invalid password error",
 			func(t *testing.T) {
-				actualUser, err := ModifyUser(testUserEmail, &models.User{
+				actualUser, err := testUserService.ModifyUser(testUserEmail, &models.User{
 					Credentials: models.Credentials{
 						Email: testUserEmail,
 						// base64(password)
@@ -250,7 +271,7 @@ func TestModifyUser(t *testing.T) {
 		{
 			"When the user has a hashed password, but the algorithm used was not SHA-512, throw an invalid password error",
 			func(t *testing.T) {
-				actualUser, err := RegisterUser(&models.Credentials{
+				actualUser, err := testUserService.RegisterUser(&models.Credentials{
 					Email: testUserEmail,
 					// base64(sha256(password))
 					Password: "MzFkYzhlYmMzZDhhN2U0ZjlhMzU4N2RkYWJkOGMxYmEwYjE5Yjc5ZjU2MWU1Yzk2MDhjYjQ4ZDRiMTRlOWFmMA==",
@@ -270,7 +291,7 @@ func TestModifyUser(t *testing.T) {
 					},
 				}
 
-				actualUser, err := ModifyUser("nonexistentuser", &expectedUser)
+				actualUser, err := testUserService.ModifyUser("nonexistentuser", &expectedUser)
 				require.Error(t, err)
 				require.Equal(t, models.User{}, actualUser)
 			},
@@ -278,14 +299,14 @@ func TestModifyUser(t *testing.T) {
 	}
 	for _, tt := range tests {
 		cleanDb(db)
-		userDao.Create(&models.User{Credentials: models.Credentials{Email: testUserEmail, Password: "testpassword"}})
+		testUserService.UserDao().Create(&models.User{Credentials: models.Credentials{Email: testUserEmail, Password: "testpassword"}})
 		t.Run(tt.name, tt.test)
 	}
 }
 
 func getDb(t *testing.T) *sql.DB {
 	// Test preparation
-	db, err := database.GetPgDb()
+	db, err := utilities.GetPgDb()
 	if err != nil {
 		logrus.Fatal("Unable to connnect with database: " + err.Error())
 	}
@@ -309,21 +330,21 @@ func TestDeleteUser(t *testing.T) {
 		{
 			"When the user exists, delete it",
 			func(t *testing.T) {
-				err := DeleteUser(testUserEmail)
+				err := testUserService.DeleteUser(testUserEmail)
 				require.NoError(t, err)
 			},
 		},
 		{
 			name: "When the user doesn't exist, return an error",
 			test: func(t *testing.T) {
-				err := DeleteUser("nonexistent")
+				err := testUserService.DeleteUser("nonexistent")
 				require.Equal(t, sql.ErrNoRows, err)
 			},
 		},
 	}
 	for _, tt := range tests {
 		cleanDb(db)
-		userDao.Create(&models.User{Credentials: models.Credentials{Email: testUserEmail, Password: "testpassword"}})
+		testUserService.UserDao().Create(&models.User{Credentials: models.Credentials{Email: testUserEmail, Password: "testpassword"}})
 		t.Run(tt.name, tt.test)
 	}
 }
@@ -338,7 +359,7 @@ func TestUserExists(t *testing.T) {
 		{
 			name: "When the user exists and password is correct, return true",
 			test: func(t *testing.T) {
-				user, exists := UserExists(testUserEmail, correctPassword)
+				user, exists := testUserService.UserExists(testUserEmail, correctPassword)
 				require.Equal(t, testUserEmail, user.Email)
 				require.True(t, exists)
 			},
@@ -346,7 +367,7 @@ func TestUserExists(t *testing.T) {
 		{
 			name: "When the user exists but password is not in base64, return false",
 			test: func(t *testing.T) {
-				user, exists := UserExists(testUserEmail, "testpassword")
+				user, exists := testUserService.UserExists(testUserEmail, "testpassword")
 				require.Equal(t, testUserEmail, user.Email)
 				require.False(t, exists)
 			},
@@ -354,7 +375,7 @@ func TestUserExists(t *testing.T) {
 		{
 			name: "When the user exists but password is incorrect, return false",
 			test: func(t *testing.T) {
-				user, exists := UserExists(testUserEmail, "MzFkYzhlYmMzZDhhN2U0ZjlhMzU4N2RkYWJkOGMxYmEwYjE5Yjc5ZjU2MWU1Yzk2MDhjYjQ4ZDRiMTRlOWFmMA==")
+				user, exists := testUserService.UserExists(testUserEmail, "MzFkYzhlYmMzZDhhN2U0ZjlhMzU4N2RkYWJkOGMxYmEwYjE5Yjc5ZjU2MWU1Yzk2MDhjYjQ4ZDRiMTRlOWFmMA==")
 				require.Equal(t, testUserEmail, user.Email)
 				require.False(t, exists)
 			},
@@ -362,7 +383,7 @@ func TestUserExists(t *testing.T) {
 		{
 			name: "When the user doesn't exist, return false",
 			test: func(t *testing.T) {
-				user, exists := UserExists("nonexistent", "")
+				user, exists := testUserService.UserExists("nonexistent", "")
 				require.Equal(t, "nonexistent", user.Email)
 				require.False(t, exists)
 			},
@@ -370,7 +391,7 @@ func TestUserExists(t *testing.T) {
 	}
 	for _, tt := range tests {
 		cleanDb(db)
-		RegisterUser(&models.Credentials{
+		testUserService.RegisterUser(&models.Credentials{
 			Email:    testUserEmail,
 			Password: correctPassword,
 		})
@@ -412,7 +433,7 @@ func TestTwoFactorMatchesAndIsNotOutdated(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.want, TwoFactorMatchesAndIsNotOutdated(tt.args.code1, tt.args.code2, tt.args.expire))
+			require.Equal(t, tt.want, testUserService.TwoFactorMatchesAndIsNotOutdated(tt.args.code1, tt.args.code2, tt.args.expire))
 		})
 	}
 }
@@ -427,11 +448,11 @@ func TestGenerate2FACodeAndSaveToUser(t *testing.T) {
 		{
 			name: "When generating a 2FA code to an existent user, return the user with the code and its timestamp",
 			test: func(t *testing.T) {
-				createdUser, err := userDao.Create(&models.User{
+				createdUser, err := testUserService.UserDao().Create(&models.User{
 					Credentials: models.Credentials{Email: testUserEmail, Password: correctPassword},
 				})
 				require.NoError(t, err)
-				userWithCode, err := Generate2FACodeAndSaveToUser(&createdUser)
+				userWithCode, err := testUserService.Generate2FACodeAndSaveToUser(&createdUser)
 				require.NoError(t, err)
 				twoFactorAuth := userWithCode.TwoFactorAuth.ValueOrZero()
 				twoFactorTime := userWithCode.TwoFactorTime.ValueOrZero()
@@ -444,7 +465,7 @@ func TestGenerate2FACodeAndSaveToUser(t *testing.T) {
 		{
 			name: "When generating a 2FA code to an unexistent user, return an error",
 			test: func(t *testing.T) {
-				userWithCode, err := Generate2FACodeAndSaveToUser(&models.User{
+				userWithCode, err := testUserService.Generate2FACodeAndSaveToUser(&models.User{
 					Credentials: models.Credentials{Email: testUserEmail, Password: correctPassword},
 				})
 				require.Error(t, err)
@@ -458,31 +479,29 @@ func TestGenerate2FACodeAndSaveToUser(t *testing.T) {
 	}
 }
 
-func TestSend2FAEmail(t *testing.T) {
-	tests := []struct {
+func TestNewUserService(t *testing.T) {
+	type args struct {
+		configuration *models.Configuration
+	}
+	testCases := []struct {
 		name string
-		test func(*testing.T)
+		args args
+		want UserService
 	}{
 		{
-			name: "When the 2FA is sent correctly, return no error",
-			test: func(t *testing.T) {
-				require.NoError(t, Send2FAEmail("mantecabox@gmail.com", "123456"))
-			},
+			name: "When passing the configuration, return the service",
+			args: args{configuration: &models.Configuration{AesKey: "0123456789ABCDEF"}},
+			want: UserServiceImpl{},
 		},
 		{
-			name: "When the email does not exist, return an error",
-			test: func(t *testing.T) {
-				require.Error(t, Send2FAEmail("unexistent@error.ko", "123456"))
-			},
-		},
-		{
-			name: "When the code is empty, return an error",
-			test: func(t *testing.T) {
-				require.Equal(t, Empty2FACodeError, Send2FAEmail("mantecabox@gmail.com", ""))
-			},
+			name: "When passing no configuration, return nil",
+			args: args{configuration: nil},
+			want: nil,
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.name, tt.test)
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			require.IsType(t, testCase.want, NewUserService(testCase.args.configuration))
+		})
 	}
 }

@@ -1,8 +1,28 @@
 {
-  "engine": "postgres",
-  "server": "localhost",
-  "port": "5432",
-  "user": "sds",
-  "password": "sds",
-  "database": "sds"
+  "aes_key": "Mantecabox rocks!",
+  "token_timeout": "1h",
+  "blocked_login_time_limit": "5m",
+  "verification_mail_time_limit": "5m",
+  "max_unsuccessful_attempts": 3,
+  "files_path": "files/",
+  "database": {
+    "engine": "postgres",
+    "host": "localhost",
+    "port": 5432,
+    "user": "sds",
+    "password": "sds",
+    "name": "sds"
+  },
+  "server": {
+    "host": "localhost",
+    "port": 10443,
+    "cert": "cert.pem",
+    "key": "key.pem"
+  },
+  "mail": {
+    "host": "smtp.gmail.com",
+    "port": 587,
+    "username": "mantecabox@gmail.com",
+    "password": "ElPutoPavel"
+  }
 }
