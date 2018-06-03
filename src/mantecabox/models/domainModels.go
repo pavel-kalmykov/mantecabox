@@ -34,8 +34,9 @@ type File struct {
 	Id int64 `json:"id"`
 	TimeStamp
 	SoftDelete
-	Name  string `json:"name"`
-	Owner User   `json:"owner"`
+	Name           string `json:"name"`
+	Owner          User   `json:"owner"`
+	PermissionsStr string `json:"permissions"`
 }
 
 type FileDTO struct {
