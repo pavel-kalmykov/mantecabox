@@ -22,3 +22,5 @@ files
 /src/golang.org/
 /src/gopkg.in/
 /src/launchpad.net/
+/src/google.golang.org/
+/src/cloud.google.com/

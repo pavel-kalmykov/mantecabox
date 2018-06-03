@@ -102,7 +102,7 @@ func (dao LoginAttemptPgDao) Create(attempt *models.LoginAttempt) (models.LoginA
 		var createdAttempt models.LoginAttempt
 		err := db.QueryRow(insertLoginAttemptQuery, attempt.User.Email, attempt.UserAgent, attempt.IP, attempt.Successful).
 			Scan(&createdAttempt.Id, &createdAttempt.CreatedAt, &createdAttempt.User.Email,
-				&createdAttempt.UserAgent, &createdAttempt.IP, &createdAttempt.Successful)
+			&createdAttempt.UserAgent, &createdAttempt.IP, &createdAttempt.Successful)
 		if err != nil {
 			daoLog.Info("Unable to execute FilePgDao.Create(file models.File) query. Reason:", err)
 			return createdAttempt, err
