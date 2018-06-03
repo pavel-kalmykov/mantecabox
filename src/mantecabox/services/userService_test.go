@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"mantecabox/database"
 	"mantecabox/models"
 	"mantecabox/utilities"
 
@@ -30,6 +29,7 @@ var (
 	testUserService         UserService
 	testMailService         MailService
 	testLoginAttemptService LoginAttemptService
+	testDatabaseManager     utilities.DatabaseManager
 	// testFileService FileService
 )
 
@@ -40,8 +40,6 @@ func init() {
 }
 
 func TestMain(m *testing.M) {
-	utilities.StartDockerPostgresDb()
-
 	configuration, err := utilities.GetConfiguration()
 	if err != nil {
 		logrus.Fatal("Unable to open config file", err)
@@ -49,11 +47,20 @@ func TestMain(m *testing.M) {
 	testUserService = NewUserService(&configuration)
 	testMailService = NewMailService(&configuration)
 	testLoginAttemptService = NewLoginAttemptService(&configuration)
+	testDatabaseManager = utilities.NewDatabaseManager(&configuration.Database)
 	// testFileService = NewFileService(&configuration)
 
+	err = testDatabaseManager.StartDockerPostgresDb()
+	if err != nil {
+		logrus.Fatal("Unable to start Docker: " + err.Error())
+	}
+	err = testDatabaseManager.RunMigrations()
+	if err != nil {
+		logrus.Fatal("Unable to run migrations: " + err.Error())
+	}
 	code := m.Run()
 
-	db, err := database.GetPgDb()
+	db, err := utilities.GetPgDb()
 	if err != nil {
 		logrus.Fatal("Unable to connnect with database: " + err.Error())
 	}
@@ -299,7 +306,7 @@ func TestModifyUser(t *testing.T) {
 
 func getDb(t *testing.T) *sql.DB {
 	// Test preparation
-	db, err := database.GetPgDb()
+	db, err := utilities.GetPgDb()
 	if err != nil {
 		logrus.Fatal("Unable to connnect with database: " + err.Error())
 	}

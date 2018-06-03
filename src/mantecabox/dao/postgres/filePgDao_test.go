@@ -3,8 +3,8 @@ package postgres
 import (
 	"testing"
 
-	"mantecabox/database"
 	"mantecabox/models"
+	"mantecabox/utilities"
 
 	"github.com/aodin/date"
 	"github.com/sirupsen/logrus"
@@ -188,7 +188,7 @@ func TestFilePgDao_Create(t *testing.T) {
 		},
 	}
 
-	db, err := database.GetPgDb()
+	db, err := utilities.GetPgDb()
 	if err != nil {
 		logrus.Fatal("Unable to connnect with database: " + err.Error())
 	}
@@ -257,7 +257,7 @@ func TestUpdate(t *testing.T) {
 		},
 	}
 
-	db, err := database.GetPgDb()
+	db, err := utilities.GetPgDb()
 	if err != nil {
 		logrus.Fatal("Unable to connnect with database: " + err.Error())
 	}

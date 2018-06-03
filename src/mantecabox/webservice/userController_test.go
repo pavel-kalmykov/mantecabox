@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"mantecabox/dao/interfaces"
-	"mantecabox/database"
 	"mantecabox/services"
 
 	"github.com/appleboy/gofight"
@@ -36,12 +35,13 @@ const (
 )
 
 var (
-	tokenTimeout    time.Duration
-	testUserService services.UserService
-	userDao         interfaces.UserDao
-	router          *gin.Engine
-	secureRouter    *gin.Engine
-	tokenParserFunc func(token *jwt.Token) (interface{}, error)
+	tokenTimeout        time.Duration
+	testUserService     services.UserService
+	testDatabaseManager utilities.DatabaseManager
+	userDao             interfaces.UserDao
+	router              *gin.Engine
+	secureRouter        *gin.Engine
+	tokenParserFunc     func(token *jwt.Token) (interface{}, error)
 )
 
 type subtest struct {
@@ -56,7 +56,6 @@ type authResponse struct {
 }
 
 func TestMain(m *testing.M) {
-	utilities.StartDockerPostgresDb()
 	configuration, err := utilities.GetConfiguration()
 	if err != nil {
 		logrus.Fatal("Unable to open config file", err)
@@ -69,12 +68,18 @@ func TestMain(m *testing.M) {
 	tokenParserFunc = func(token *jwt.Token) (interface{}, error) {
 		return testUserService.AesCipher().Key(), nil
 	}
+	testDatabaseManager = utilities.NewDatabaseManager(&configuration.Database)
+
+	err = testDatabaseManager.StartDockerPostgresDb()
+	if err != nil {
+		logrus.Fatal("Unable to start Docker: " + err.Error())
+	}
+	err = testDatabaseManager.RunMigrations()
+	if err != nil {
+		logrus.Fatal("Unable to run migrations: " + err.Error())
+	}
 	code := m.Run()
 
-	db, err := database.GetPgDb()
-	if err == nil {
-		cleanDb(db)
-	}
 	os.Exit(code)
 }
 
@@ -583,7 +588,7 @@ func performActionWithTokenAndCustomRouter(t *testing.T, customRouter *gin.Engin
 }
 
 func getDb(t *testing.T) *sql.DB {
-	db, err := database.GetPgDb()
+	db, err := utilities.GetPgDb()
 	require.NoError(t, err)
 	require.NotNil(t, db)
 	return db

@@ -29,3 +29,25 @@ func TestFileNewCTR(t *testing.T) {
 	// To check the string is in base64, we try to decode it
 	require.Equal(t, testFile, decrypted)
 }
+
+func TestNewAesCTRCipher(t *testing.T) {
+	type args struct {
+		key string
+	}
+	tests := []struct {
+		name string
+		args args
+		want AesCTRCipher
+	}{
+		{
+			name: "When a key is passed, return the cipher",
+			args: args{key: "0123456789ABCDEF"},
+			want: AesCTRCipherImpl{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.IsType(t, tt.want, NewAesCTRCipher(tt.args.key))
+		})
+	}
+}

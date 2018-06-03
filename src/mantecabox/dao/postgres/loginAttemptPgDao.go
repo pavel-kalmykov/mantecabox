@@ -3,8 +3,8 @@ package postgres
 import (
 	"database/sql"
 
-	"mantecabox/database"
 	"mantecabox/models"
+	"mantecabox/utilities"
 )
 
 const (
@@ -31,7 +31,7 @@ type LoginAttemptPgDao struct {
 }
 
 func withDb(f func(db *sql.DB) (interface{}, error)) (interface{}, error) {
-	db, err := database.GetPgDb()
+	db, err := utilities.GetPgDb()
 	if err != nil {
 		daoLog.Fatal("Unable to connnect with database: " + err.Error())
 		return models.LoginAttempt{}, err

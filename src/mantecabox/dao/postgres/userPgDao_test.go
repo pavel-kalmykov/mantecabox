@@ -2,11 +2,10 @@ package postgres
 
 import (
 	"database/sql"
-	"os"
 	"testing"
 
-	"mantecabox/database"
 	"mantecabox/models"
+	"mantecabox/utilities"
 
 	"github.com/aodin/date"
 	"github.com/gin-gonic/gin/json"
@@ -16,18 +15,6 @@ import (
 )
 
 const testUserInsert = `INSERT INTO users (email, password) VALUES ('testuser1', 'testpassword1');`
-
-func TestMain(m *testing.M) {
-	code := m.Run()
-
-	db, err := database.GetPgDb()
-	if err != nil {
-		logrus.Fatal("Unable to connnect with database: " + err.Error())
-		os.Exit(-1)
-	}
-	cleanDb(db)
-	os.Exit(code)
-}
 
 func TestUserPgDao_GetAll(t *testing.T) {
 	testCases := []struct {
@@ -336,7 +323,7 @@ func TestJSONParsing(t *testing.T) {
 
 func getDb(t *testing.T) *sql.DB {
 	// Test preparation
-	db, err := database.GetPgDb()
+	db, err := utilities.GetPgDb()
 	if err != nil {
 		logrus.Fatal("Unable to connnect with database: " + err.Error())
 	}
