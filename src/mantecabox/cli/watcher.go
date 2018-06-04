@@ -6,9 +6,12 @@ import (
 	"os"
 	"time"
 
+	"mantecabox/models"
+
 	"github.com/mitchellh/go-homedir"
 	"github.com/phayes/permbits"
 	"github.com/radovskyb/watcher"
+	"gopkg.in/guregu/null.v3"
 )
 
 func monitorChanges(w *watcher.Watcher) {
@@ -20,11 +23,14 @@ func monitorChanges(w *watcher.Watcher) {
 			if err != nil {
 				fmt.Fprintln(os.Stderr, err)
 			}
+
+			localFiles := make([]models.FileDTO, len(fileInfos))
 			for _, fileInfo := range fileInfos {
-				fmt.Println("File:",
-					permbits.FileMode(fileInfo.Mode()).String(),
-					fileInfo.ModTime().Format(time.RFC822),
-					fileInfo.Name())
+				localFiles = append(localFiles, models.FileDTO{
+					TimeStamp:      models.TimeStamp{UpdatedAt: null.Time{Time: fileInfo.ModTime(), Valid: true}},
+					Name:           fileInfo.Name(),
+					PermissionsStr: permbits.FileMode(fileInfo.Mode()).String(),
+				})
 			}
 		case err := <-w.Error:
 			fmt.Fprintln(os.Stderr, err)
