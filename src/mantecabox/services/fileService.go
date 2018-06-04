@@ -2,6 +2,8 @@ package services
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"mime/multipart"
@@ -20,7 +22,9 @@ import (
 type (
 	FileService interface {
 		GetAllFiles(user models.User) ([]models.File, error)
+		GetVersionsByNameAndOwner(filename string, user *models.User) ([]models.File, error)
 		GetLastVersionFileByNameAndOwner(filename string, user *models.User) (models.File, error)
+		GetFileByVersion(id int64, user *models.User) (models.File, error)
 		GetFileStream(fileDecrypt []byte, file models.File) (contentLength int64, contentType string, reader *bytes.Reader, extraHeaders map[string]string)
 		GetDecryptedLocalFile(file models.File) ([]byte, error)
 		CreateFile(file *models.File) (models.File, error)
@@ -60,8 +64,21 @@ func (fileService FileServiceImpl) GetAllFiles(user models.User) ([]models.File,
 	return fileService.fileDao.GetAllByOwner(&user)
 }
 
+func (fileService FileServiceImpl) GetVersionsByNameAndOwner(filename string, user *models.User) ([]models.File, error) {
+	return fileService.fileDao.GetVersionsByNameAndOwner(filename, user)
+}
+
 func (fileService FileServiceImpl) GetLastVersionFileByNameAndOwner(filename string, user *models.User) (models.File, error) {
 	return fileService.fileDao.GetLastVersionFileByNameAndOwner(filename, user)
+}
+
+func (fileService FileServiceImpl) GetFileByVersion(id int64, user *models.User) (models.File, error) {
+	file, err := fileService.fileDao.GetFileByVersion(id)
+	if file.Owner.Email != user.Email {
+		err := errors.New(fmt.Sprintf(`the file "%v" does not belong to the user "%v"`, file.Name, user.Email))
+		return models.File{}, err
+	}
+	return file, err
 }
 
 func (fileService FileServiceImpl) GetDecryptedLocalFile(file models.File) ([]byte, error) {
