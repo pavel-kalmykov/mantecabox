@@ -15,6 +15,7 @@ import (
 
 	"github.com/go-http-utils/headers"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/api/drive/v3"
 )
 
 type (
@@ -26,8 +27,11 @@ type (
 		CreateFile(file *models.File) (models.File, error)
 		UpdateFile(id int64, file models.File) (models.File, error)
 		SaveFile(file multipart.File, uploadedFile models.File) error
-		DeleteFile(filename string, user *models.User) error
+		DeleteFile(filename string, user *models.User) (models.File, error)
 		createDirIfNotExists()
+		UploadFileGDrive(srv *drive.Service, filename string, file multipart.File) (*drive.File, error)
+		DownloadFile(srv *drive.Service, filedId string, file models.File) ([]byte, error)
+		GetFileGDrive(file models.File) ([]byte, error)
 	}
 
 	FileServiceImpl struct {
@@ -94,36 +98,48 @@ func (fileService FileServiceImpl) UpdateFile(id int64, file models.File) (model
 	return fileService.fileDao.Update(id, &file)
 }
 
-func (fileService FileServiceImpl) SaveFile(file multipart.File, uploadedFile models.File) error {
+func (fileService FileServiceImpl) encryptFile(file multipart.File) ([]byte, error) {
 	// Conversión a bytes del fichero
 	buf := bytes.NewBuffer(nil)
 	if _, err := io.Copy(buf, file); err != nil {
-		return err
+		return nil, err
 	}
 	encrypted := fileService.aesCipher.Encrypt(buf.Bytes())
-	// Guardamos el fichero encriptado
-	if err := ioutil.WriteFile(fileService.configuration.FilesPath+strconv.FormatInt(uploadedFile.Id, 10), encrypted, 0600); err != nil {
+
+	return encrypted, nil
+}
+
+func (fileService FileServiceImpl) SaveFile(file multipart.File, uploadedFile models.File) error {
+
+	encrypted, err := fileService.encryptFile(file)
+	if err != nil {
 		return err
 	}
+
+	// Guardamos el fichero encriptado
+	if err := ioutil.WriteFile(fileService.configuration.FilesPath+strconv.FormatInt(uploadedFile.Id, 10), encrypted, 0700); err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func (fileService FileServiceImpl) DeleteFile(filename string, user *models.User) error {
+func (fileService FileServiceImpl) DeleteFile(filename string, user *models.User) (models.File, error) {
 	file, err := fileService.fileDao.GetByPk(filename, user)
 	if err != nil {
-		return err
+		return file, err
 	}
 	err = fileService.fileDao.Delete(filename, user)
 	if err != nil {
-		return err
+		return file, err
 	}
 
 	err = os.Remove(fileService.configuration.FilesPath + strconv.FormatInt(file.Id, 10))
 	if err != nil {
-		return err
+		return file, err
 	}
 
-	return err
+	return file, err
 }
 
 func (fileService FileServiceImpl) createDirIfNotExists() {

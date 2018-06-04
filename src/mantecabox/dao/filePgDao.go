@@ -22,7 +22,7 @@ FROM files f
   JOIN users u ON f.owner = u.email
 WHERE f.deleted_at IS NULL AND u.deleted_at IS NULL AND f.name = $1 AND u.email = $2`
 	insertFileQuery = `INSERT INTO files (name, owner, gdrive_id) VALUES ($1, $2, $3) RETURNING *;`
-	updateFileQuery = `UPDATE files SET name = $1, owner = $2 WHERE id = $3 RETURNING *`
+	updateFileQuery = `UPDATE files SET name = $1, owner = $2, gdrive_id = $3 WHERE id = $4 RETURNING *`
 	deleteFileQuery = "UPDATE files SET deleted_at = NOW() WHERE deleted_at is null and name = $1 AND owner = $2"
 )
 
@@ -90,7 +90,7 @@ func (dao FilePgDao) Update(id int64, file *models.File) (models.File, error) {
 	res, err := withDb(func(db *sql.DB) (interface{}, error) {
 		var updatedFile models.File
 		row := db.QueryRow(updateFileQuery,
-			file.Name, file.Owner.Email, id,
+			file.Name, file.Owner.Email, file.GdriveID, id,
 		)
 		err := scanFileRow(row, &updatedFile)
 		if err != nil {

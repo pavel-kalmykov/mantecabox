@@ -1,14 +1,18 @@
 package services
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
+	"mime/multipart"
 	"net/http"
 	"os"
+
+	"mantecabox/models"
 
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
@@ -106,52 +110,74 @@ func ListFiles(srv *drive.Service) {
 }
 
 // File delere
-func RemoveFile(srv *drive.Service, filedId string) {
+func RemoveFile(srv *drive.Service, filedId string) error {
 	 err := srv.Files.Delete(filedId).Do()
 	 if err != nil {
-	 	log.Fatalf("Unable to delete file: %v", err)
+	 	return err
 	 }
+
+	 return nil
 }
 
 // File upload
-func UploadFile(srv *drive.Service, filename string, file io.Reader) {
-	driveFile, err := srv.Files.Create(&drive.File{Name: filename}).Media(file).Do()
+func (fileService FileServiceImpl) UploadFileGDrive(srv *drive.Service, filename string, file multipart.File) (*drive.File, error) {
+
+	fileEncrypted, err := fileService.encryptFile(file)
+	if err != nil {
+		return nil, err
+	}
+
+	driveFile, err := srv.Files.Create(&drive.File{Name: filename}).Media(bytes.NewReader(fileEncrypted)).Do()
 	if err != nil {
 		log.Fatalf("Unable to create file: %v", err)
+		return nil, err
 	}
+
 	log.Printf("uploaded file: %+v (%v)", driveFile.Name, driveFile.Id)
-	log.Println("done")
+
+	return driveFile, err
 }
 
 // File update
-func UpdateFile(srv *drive.Service, filedId string, filename string, file io.Reader) {
-	 driveFile, err := srv.Files.Update(filedId, &drive.File{Name: filename}).Media(file).Do()
+func UpdateFile(srv *drive.Service, filedId string, filename string, file io.Reader) error {
+
+	 _, err := srv.Files.Update(filedId, &drive.File{Name: filename}).Media(file).Do()
 	 if err != nil {
-	 	log.Fatalf("Unable to update file: %v", err)
+	 	return err
 	 }
-	 log.Printf("updated file: %+v (%v)", driveFile.Name, driveFile.Id)
-	 log.Println("done")
+
+	 return nil
 }
 
 // File download
-func DownloadFile(srv *drive.Service, filedId string) {
-	driveFile, err := srv.Files.Get(filedId).Do()
+func (fileService FileServiceImpl) DownloadFile(srv *drive.Service, filedId string, file models.File) ([]byte, error) {
+	_, err := srv.Files.Get(filedId).Do()
 	if err != nil {
-		log.Fatalf("Unable to get file: %v", err)
+		return  nil, err
 	}
-	log.Printf("got file: %+v (%v)", driveFile.Name, driveFile.Id)
+
 	response, err := srv.Files.Get(filedId).Download()
+
+	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		log.Fatalf("Unable to download file: %v", err)
+		return nil, err
 	}
-	outFile, err := os.Create("downloaded.json")
+
+	fileDecrypt := fileService.aesCipher.Decrypt(body)
+
+	return fileDecrypt, nil
+}
+
+func (fileService FileServiceImpl) GetFileGDrive(file models.File) ([]byte, error) {
+	gService, err := GetGdriveService()
 	if err != nil {
-		log.Fatalf("Unable to create file: %v", err)
+		return nil, err
 	}
-	defer outFile.Close()
-	_, err = io.Copy(outFile, response.Body)
+
+	fileResponse, err := fileService.DownloadFile(gService, file.GdriveID.String, file)
 	if err != nil {
-		log.Fatalf("Unable to write file: %v", err)
+		return nil, err
 	}
-	log.Println("done")
+
+	return fileResponse, err
 }
