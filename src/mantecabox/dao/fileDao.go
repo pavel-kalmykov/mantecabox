@@ -29,6 +29,7 @@ FROM (SELECT *
       ORDER BY f.updated_at DESC) as T;`
 	getFileByVersionQuery = `SELECT f.*, u.* FROM files f JOIN users u on f.owner = u.email WHERE f.id = $1`
 	insertFileQuery       = `INSERT INTO files (name, owner) VALUES ($1, $2) RETURNING *;`
+	setGDriveIdQuery      = `UPDATE files SET gdrive_id = $1 WHERE id = $2`
 	deleteFileQuery       = "UPDATE files SET deleted_at = NOW() WHERE name = $1 AND owner = $2"
 )
 
@@ -39,6 +40,7 @@ type (
 		GetLastVersionFileByNameAndOwner(filename string, user *models.User) (models.File, error)
 		GetFileByVersion(id int64) (models.File, error)
 		Create(f *models.File) (models.File, error)
+		SetGdriveId(id int64, gdriveId string) error
 		Delete(filename string, user *models.User) error
 	}
 
@@ -143,6 +145,32 @@ func (dao FilePgDao) Create(file *models.File) (models.File, error) {
 	return res.(models.File), err
 }
 
+func (dao FilePgDao) SetGdriveId(id int64, gdriveId string) error {
+	_, err := withDb(func(db *sql.DB) (interface{}, error) {
+		result, err := db.Exec(setGDriveIdQuery, gdriveId, id)
+		if err != nil {
+			daoLog.Info("Unable to execute FilePgDao.Delete(id int64) query. Reason:", err)
+		} else {
+			var rowsAffected int64
+			rowsAffected, err = result.RowsAffected()
+			if err != nil {
+				daoLog.Info("Some error occured during setting gdrive id:", err)
+			} else {
+				if rowsAffected == 0 {
+					err = errors.New("not found")
+				}
+				if err != nil {
+					daoLog.Debug(fmt.Sprintf(`Unable to set %v's file gdrive id "%v". Reason %v`, id, gdriveId, err))
+				} else {
+					daoLog.Debug(fmt.Sprintf(`%v's' file gdrive id "%v" successfully set.`, id, gdriveId))
+				}
+			}
+		}
+		return nil, err
+	})
+	return err
+}
+
 func (dao FilePgDao) Delete(filename string, user *models.User) error {
 	_, err := withDb(func(db *sql.DB) (interface{}, error) {
 		result, err := db.Exec(deleteFileQuery, filename, user.Email)
@@ -176,7 +204,8 @@ func scanFileRow(scanner polimorphicScanner, file *models.File) error {
 		&file.DeletedAt,
 		&file.Name,
 		&file.Owner.Email,
-		&file.PermissionsStr)
+		&file.PermissionsStr,
+		&file.GdriveID)
 	return err
 }
 
@@ -188,6 +217,7 @@ func scanFileRowWithUser(scanner polimorphicScanner, file *models.File) error {
 		&file.Name,
 		&file.Owner.Email,
 		&file.PermissionsStr,
+		&file.GdriveID,
 		// user
 		&file.Owner.CreatedAt,
 		&file.Owner.UpdatedAt,

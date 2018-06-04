@@ -22,6 +22,7 @@ type (
 		GetFileVersion(context *gin.Context)
 		DownloadFile(context *gin.Context)
 		DownloadFileVersion(context *gin.Context)
+		download(filename string, file models.File, err error, context *gin.Context)
 		UploadFile(context *gin.Context)
 		DeleteFile(context *gin.Context)
 	}
@@ -104,28 +105,48 @@ func (fileController FileControllerImpl) GetFileVersion(context *gin.Context) {
 	context.JSON(200, models.FileToDto(file))
 }
 
+/*else {
+// ---------- gdrive ----------
+gService, err := services.GetGdriveService()
+if err != nil {
+sendJsonMsg(context, http.StatusInternalServerError, err.Error())
+return
+}
+
+err = services.UpdateFile(gService, fileModel.GdriveID.String, strconv.FormatInt(fileModel.Id, 10), file)
+if err != nil {
+sendJsonMsg(context, http.StatusInternalServerError, err.Error())
+fmt.Printf("UpdateFile gdrive error: %v", err.Error())
+return
+}
+// ----------------------------
+
+_, err = fileController.fileService.UpdateFile(fileModel.Id, fileModel)
+if err != nil {
+sendJsonMsg(context, http.StatusInternalServerError, err.Error())
+return
+}
+}
+file, err := fileController.fileService.GetFileByVersion(filename, version, &user)
+if err != nil {
+if err == sql.ErrNoRows {
+sendJsonMsg(context, http.StatusNotFound, fmt.Sprintf(`Unable to find file "%v" version %v: %v`, filename, version, err))
+return
+} else {
+sendJsonMsg(context, http.StatusInternalServerError, fmt.Sprintf(`Unable to find file "%v" version %v: %v`, filename, version, err))
+return
+}
+}
+context.JSON(200, models.FileToDto(file))
+}
+*/
+
 func (fileController FileControllerImpl) DownloadFile(context *gin.Context) {
 	filename := context.Param("file")
 	user := getUser(context)
+
 	file, err := fileController.fileService.GetLastVersionFileByNameAndOwner(filename, &user)
-
-	if err != nil {
-		if err == sql.ErrNoRows {
-			sendJsonMsg(context, http.StatusNotFound, fmt.Sprintf(`Unable to find file "%v": %v`, filename, err))
-			return
-		} else {
-			sendJsonMsg(context, http.StatusInternalServerError, fmt.Sprintf(`Unable to find file "%v": %v`, filename, err))
-			return
-		}
-	}
-
-	fileDecrypt, err := fileController.fileService.GetDecryptedLocalFile(file)
-	if err != nil {
-		sendJsonMsg(context, http.StatusInternalServerError, fmt.Sprintf(`Unable to find file "%v": %v`, filename, err))
-	}
-
-	contentLength, contentType, reader, extraHeaders := fileController.fileService.GetFileStream(fileDecrypt, file)
-	context.DataFromReader(http.StatusOK, contentLength, contentType, reader, extraHeaders)
+	fileController.download(filename, file, err, context)
 }
 
 func (fileController FileControllerImpl) DownloadFileVersion(context *gin.Context) {
@@ -139,6 +160,10 @@ func (fileController FileControllerImpl) DownloadFileVersion(context *gin.Contex
 	}
 
 	file, err := fileController.fileService.GetFileByVersion(filename, version, &user)
+	fileController.download(filename, file, err, context)
+}
+
+func (fileController FileControllerImpl) download(filename string, file models.File, err error, context *gin.Context) {
 	if err != nil {
 		if err == sql.ErrNoRows {
 			sendJsonMsg(context, http.StatusNotFound, fmt.Sprintf(`Unable to find file "%v": %v`, filename, err))
@@ -149,7 +174,13 @@ func (fileController FileControllerImpl) DownloadFileVersion(context *gin.Contex
 		}
 	}
 
-	fileDecrypt, err := fileController.fileService.GetDecryptedLocalFile(file)
+	var fileDecrypt []byte
+	if fileController.configuration.UseGDrive {
+		fileDecrypt, err = fileController.fileService.GetFileGDrive(file)
+	} else {
+		fileDecrypt, err = fileController.fileService.GetDecryptedLocalFile(file)
+	}
+
 	if err != nil {
 		sendJsonMsg(context, http.StatusInternalServerError, fmt.Sprintf(`Unable to find file "%v": %v`, filename, err))
 	}
@@ -158,9 +189,7 @@ func (fileController FileControllerImpl) DownloadFileVersion(context *gin.Contex
 	context.DataFromReader(http.StatusOK, contentLength, contentType, reader, extraHeaders)
 }
 
-// UploadFile se encarga de la subida y cifrado de los ficheros.
 func (fileController FileControllerImpl) UploadFile(context *gin.Context) {
-	// Obtención del fichero desde el post
 	file, header, err := context.Request.FormFile("file")
 	permissionsStr, _ := context.GetPostForm("permissions")
 	if permissionsStr != "" && len(permissionsStr) != 9 {
@@ -181,7 +210,23 @@ func (fileController FileControllerImpl) UploadFile(context *gin.Context) {
 		sendJsonMsg(context, http.StatusInternalServerError, err.Error())
 		return
 	}
-	err = fileController.fileService.SaveFile(file, fileModel)
+
+	if fileController.configuration.UseGDrive {
+		gService, err := services.GetGdriveService()
+		if err != nil {
+			sendJsonMsg(context, http.StatusInternalServerError, err.Error())
+			return
+		}
+		fileDrive, err := fileController.fileService.UploadFileGDrive(gService, strconv.FormatInt(fileModel.Id, 10), file)
+		if err != nil {
+			sendJsonMsg(context, http.StatusInternalServerError, "Unable to upload file to google drive: "+err.Error())
+			return
+		}
+		err = fileController.fileService.SetGdriveId(fileModel.Id, fileDrive.Id)
+	} else {
+		err = fileController.fileService.SaveFile(file, fileModel)
+	}
+
 	if err != nil {
 		sendJsonMsg(context, http.StatusInternalServerError, err.Error())
 		return
@@ -193,7 +238,8 @@ func (fileController FileControllerImpl) UploadFile(context *gin.Context) {
 func (fileController FileControllerImpl) DeleteFile(context *gin.Context) {
 	filename := context.Param("file")
 	user := getUser(context)
-	err := fileController.fileService.DeleteFile(filename, &user)
+
+	_, err := fileController.fileService.DeleteFile(filename, &user)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			sendJsonMsg(context, http.StatusNotFound, "Unable to find file: "+filename)
@@ -202,7 +248,6 @@ func (fileController FileControllerImpl) DeleteFile(context *gin.Context) {
 		}
 		return
 	}
-
 	context.Writer.WriteHeader(http.StatusNoContent)
 }
 

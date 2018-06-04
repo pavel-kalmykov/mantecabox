@@ -30,6 +30,7 @@ type Configuration struct {
 	VerificationMailTimeLimit string   `json:"verification_mail_time_limit"`
 	MaxUnsuccessfulAttempts   int      `json:"max_unsuccessful_attempts"`
 	FilesPath                 string   `json:"files_path"`
+	UseGDrive                 bool     `json:"use_gdrive"`
 	Database                  Database `json:"database"`
 	Server                    Server   `json:"server"`
 	Mail                      Mail     `json:"mail"`
