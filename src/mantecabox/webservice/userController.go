@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"mantecabox/logs"
 	"mantecabox/models"
 	"mantecabox/services"
 
@@ -42,7 +43,7 @@ func NewUserController(configuration *models.Configuration) UserController {
 	}
 	tokenTimeout, err := time.ParseDuration(configuration.TokenTimeout)
 	if err != nil {
-		panic("Unable to parse token's timeout: " + err.Error())
+		logs.ControllerLog.Fatal("Unable to parse token's timeout: " + err.Error())
 	}
 	return UserControllerImpl{
 		userService:         userService,
@@ -88,6 +89,7 @@ func (userController UserControllerImpl) GetUsers(c *gin.Context) {
 	users, err := userController.userService.GetUsers()
 	if err != nil {
 		sendJsonMsg(c, http.StatusInternalServerError, "Unable to retrieve users: "+err.Error())
+		logs.ControllerLog.Error("Unable to retrieve users: "+err.Error())
 		return
 	}
 	var dtos []models.UserDto
@@ -101,8 +103,10 @@ func (userController UserControllerImpl) GetUser(c *gin.Context) {
 	if err != nil {
 		if err == sql.ErrNoRows {
 			sendJsonMsg(c, http.StatusNotFound, "Unable to find user: "+username)
+			logs.ControllerLog.Error("Unable to find user: "+username)
 		} else {
 			sendJsonMsg(c, http.StatusInternalServerError, "Unable to find user: "+err.Error())
+			logs.ControllerLog.Error("Unable to find user: "+err.Error())
 		}
 		return
 	}
@@ -116,11 +120,13 @@ func (userController UserControllerImpl) RegisterUser(c *gin.Context) {
 	err := c.ShouldBindJSON(&credentials)
 	if err != nil {
 		sendJsonMsg(c, http.StatusBadRequest, "Unable to parse JSON: "+err.Error())
+		logs.ControllerLog.Error("Unable to parse JSON: "+err.Error())
 		return
 	}
 	registeredUser, err := userController.userService.RegisterUser(&credentials)
 	if err != nil {
 		sendJsonMsg(c, http.StatusBadRequest, "Unable to register user: "+err.Error())
+		logs.ControllerLog.Error("Unable to register user: "+err.Error())
 		return
 	}
 	var dto models.UserDto
@@ -133,6 +139,7 @@ func (userController UserControllerImpl) ModifyUser(c *gin.Context) {
 	err := c.ShouldBindJSON(&user)
 	if err != nil {
 		sendJsonMsg(c, http.StatusBadRequest, "Unable to parse JSON: "+err.Error())
+		logs.ControllerLog.Error("Unable to parse JSON: "+err.Error())
 		return
 	}
 	username := c.Param("email")
@@ -140,8 +147,10 @@ func (userController UserControllerImpl) ModifyUser(c *gin.Context) {
 	if err != nil {
 		if err == sql.ErrNoRows {
 			sendJsonMsg(c, http.StatusNotFound, "Unable to find user: "+username)
+			logs.ControllerLog.Error("Unable to find user: "+username)
 		} else {
 			sendJsonMsg(c, http.StatusBadRequest, "Unable to modify user: "+err.Error())
+			logs.ControllerLog.Error("Unable to modify user: "+err.Error())
 		}
 		return
 	}
@@ -156,8 +165,10 @@ func (userController UserControllerImpl) DeleteUser(c *gin.Context) {
 	if err != nil {
 		if err == sql.ErrNoRows {
 			sendJsonMsg(c, http.StatusNotFound, "Unable to find user: "+email)
+			logs.ControllerLog.Error("Unable to find user: "+email)
 		} else {
 			sendJsonMsg(c, http.StatusBadRequest, "Unable to delete user: "+err.Error())
+			logs.ControllerLog.Error("Unable to delete user: "+err.Error())
 		}
 		return
 	}
@@ -169,6 +180,7 @@ func (userController UserControllerImpl) Generate2FAAndSendMail(c *gin.Context) 
 	err := c.ShouldBindJSON(&credentials)
 	if err != nil {
 		sendJsonMsg(c, http.StatusBadRequest, "Unable to parse JSON: "+err.Error())
+		logs.ControllerLog.Error("Unable to parse JSON: "+err.Error())
 		return
 	}
 	foundUser, exists := userController.userService.UserExists(credentials.Email, credentials.Password)
@@ -185,11 +197,13 @@ func (userController UserControllerImpl) Generate2FAAndSendMail(c *gin.Context) 
 	userWithCode, err := userController.userService.Generate2FACodeAndSaveToUser(&foundUser)
 	if err != nil {
 		sendJsonMsg(c, http.StatusInternalServerError, "Error creating secure code: "+err.Error())
+		logs.ControllerLog.Error("Error creating secure code: "+err.Error())
 		return
 	}
 	err = userController.mailService.Send2FAEmail(userWithCode.Email, userWithCode.TwoFactorAuth.ValueOrZero())
 	if err != nil {
 		sendJsonMsg(c, http.StatusInternalServerError, "Error sending email: "+err.Error())
+		logs.ControllerLog.Error("Error sending email: "+err.Error())
 		return
 	}
 	c.JSON(http.StatusOK, models.ServerError{

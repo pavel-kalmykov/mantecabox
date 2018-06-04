@@ -6,14 +6,10 @@ import (
 	"mantecabox/utilities"
 	"mantecabox/webservice"
 
-	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
 
 func main() {
-	if gin.Mode() == gin.DebugMode {
-		logrus.SetLevel(logrus.DebugLevel)
-	}
 	config, err := utilities.GetConfiguration()
 	if err != nil {
 		logrus.Fatal(fmt.Sprintf("Unable to read configuration file: %v", err))

@@ -11,9 +11,9 @@ import (
 	"net/http"
 	"os"
 
+	"mantecabox/logs"
 	"mantecabox/models"
 
-	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -39,12 +39,12 @@ func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
 
 	var authCode string
 	if _, err := fmt.Scan(&authCode); err != nil {
-		logrus.Fatalf("Unable to read authorization code %v", err)
+		logs.ServicesLog.Fatalf("Unable to read authorization code %v", err)
 	}
 
 	tok, err := config.Exchange(context.Background(), authCode)
 	if err != nil {
-		logrus.Fatalf("Unable to retrieve token from web %v", err)
+		logs.ServicesLog.Fatalf("Unable to retrieve token from web %v", err)
 	}
 	return tok
 }
@@ -63,11 +63,11 @@ func tokenFromFile(file string) (*oauth2.Token, error) {
 
 // Saves a token to a file path.
 func saveToken(path string, token *oauth2.Token) {
-	fmt.Printf("Saving credential file to: %s\n", path)
+	logs.ServicesLog.Infof("Saving credential file to: %s\n", path)
 	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	defer f.Close()
 	if err != nil {
-		logrus.Fatalf("Unable to cache oauth token: %v", err)
+		logs.ServicesLog.Fatalf("Unable to cache oauth token: %v", err)
 	}
 	json.NewEncoder(f).Encode(token)
 }
@@ -97,14 +97,14 @@ func ListFiles(srv *drive.Service) {
 	r, err := srv.Files.List().
 		Fields("nextPageToken, files(id, name)").Do()
 	if err != nil {
-		logrus.Fatalf("Unable to retrieve files: %v", err)
+		logs.ServicesLog.Fatalf("Unable to retrieve files: %v", err)
 	}
 	fmt.Println("Files:")
 	if len(r.Files) == 0 {
-		fmt.Println("No files found.")
+		logs.ServicesLog.Error("No files found.")
 	} else {
 		for _, i := range r.Files {
-			fmt.Printf("%s (%s)\n", i.Name, i.Id)
+			logs.ServicesLog.Infof("%s (%s)\n", i.Name, i.Id)
 		}
 	}
 }
@@ -129,11 +129,11 @@ func (fileService FileServiceImpl) UploadFileGDrive(srv *drive.Service, filename
 
 	driveFile, err := srv.Files.Create(&drive.File{Name: filename}).Media(bytes.NewReader(fileEncrypted)).Do()
 	if err != nil {
-		logrus.Fatalf("Unable to create file: %v", err)
+		logs.ServicesLog.Fatalf("Unable to create file: %v", err)
 		return nil, err
 	}
 
-	logrus.Printf("uploaded file: %+v (%v)", driveFile.Name, driveFile.Id)
+	logs.ServicesLog.Infof("uploaded file: %+v (%v)", driveFile.Name, driveFile.Id)
 
 	return driveFile, err
 }

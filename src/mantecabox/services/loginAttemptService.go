@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"mantecabox/dao"
+	"mantecabox/logs"
 	"mantecabox/models"
 
 	"github.com/benashford/go-func"
@@ -49,7 +50,7 @@ func (loginAttemptService LoginAttemptServiceImpl) ProcessLoginAttempt(attempt *
 	MaxUnsuccessfulAttempts := loginAttemptService.configuration.MaxUnsuccessfulAttempts
 	timeLimit, err := time.ParseDuration(loginAttemptService.configuration.BlockedLoginTimeLimit)
 	if err != nil {
-		panic("unable to parse blocked login's time limit configuration value: " + err.Error())
+		logs.ServicesLog.Fatalf("unable to parse blocked login's time limit configuration value: %v", err.Error())
 	}
 	createdAttempt, err := loginAttemptDao.Create(attempt)
 	if err != nil {

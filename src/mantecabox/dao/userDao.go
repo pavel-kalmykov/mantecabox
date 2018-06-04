@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 
+	"mantecabox/logs"
 	"mantecabox/models"
 
 	"github.com/PeteProgrammer/go-automapper"
@@ -34,11 +35,12 @@ type (
 )
 
 func (dao UserPgDao) GetAll() ([]models.User, error) {
+	logs.DaoLog.Debug("GetAll")
 	res, err := withDb(func(db *sql.DB) (interface{}, error) {
 		users := make([]models.User, 0)
 		rows, err := db.Query(getAllUsersQuery)
 		if err != nil {
-			daoLog.Info("Unable to execute UserPgDao.GetAll() query. Reason:", err)
+			logs.DaoLog.Infof("Unable to execute UserPgDao.GetAll() query. Reason: %v", err)
 			return nil, err
 		}
 
@@ -46,29 +48,30 @@ func (dao UserPgDao) GetAll() ([]models.User, error) {
 			var user models.User
 			err := scanUserRow(rows, &user)
 			if err != nil {
-				daoLog.Info("Unable to execute UserPgDao.GetAll() query. Reason:", err)
+				logs.DaoLog.Infof("Unable to execute UserPgDao.GetAll() query. Reason: %v", err)
 				return nil, err
 			}
 			users = append(users, user)
 		}
 
-		daoLog.Debug("Queried ", len(users), " users")
+		logs.DaoLog.Info("Queried ", len(users), " users")
 		return users, err
 	})
 	return res.([]models.User), err
 }
 
 func (dao UserPgDao) GetByPk(email string) (models.User, error) {
+	logs.DaoLog.Debug("GetByPk")
 	res, err := withDb(func(db *sql.DB) (interface{}, error) {
 		user := models.User{}
 		row := db.QueryRow(getUserByPkQuery, email)
 		err := scanUserRow(row, &user)
 		if err != nil {
-			daoLog.Debug("Unable to execute UserPgDao.GetVersionsByNameAndOwner(email string) query. Reason:", err)
+			logs.DaoLog.Infof("Unable to execute UserPgDao.GetVersionsByNameAndOwner(email string) query. Reason: %v", err)
 		} else {
 			var dto models.UserDto
 			automapper.Map(user, &dto)
-			daoLog.Debug("Retrieved user", dto)
+			logs.DaoLog.Infof("Retrieved user %v", dto)
 		}
 		return user, err
 	})
@@ -76,15 +79,16 @@ func (dao UserPgDao) GetByPk(email string) (models.User, error) {
 }
 
 func (dao UserPgDao) Create(user *models.User) (models.User, error) {
+	logs.DaoLog.Debug("Create")
 	res, err := withDb(func(db *sql.DB) (interface{}, error) {
 		var createdUser models.User
 		row := db.QueryRow(insertUserQuery,
 			user.Email, user.Password)
 		err := scanUserRow(row, &createdUser)
 		if err != nil {
-			daoLog.Info("Unable to execute UserPgDao.Create(user models.User) query. Reason:", err)
+			logs.DaoLog.Infof("Unable to execute UserPgDao.Create(user models.User) query. Reason: %v", err)
 		} else {
-			daoLog.Debug("Created user", createdUser)
+			logs.DaoLog.Infof("Created user %v", createdUser)
 		}
 		return createdUser, err
 	})
@@ -92,15 +96,16 @@ func (dao UserPgDao) Create(user *models.User) (models.User, error) {
 }
 
 func (dao UserPgDao) Update(email string, user *models.User) (models.User, error) {
+	logs.DaoLog.Debug("Update")
 	res, err := withDb(func(db *sql.DB) (interface{}, error) {
 		var updatedUser models.User
 		row := db.QueryRow(updateUserQuery,
 			user.Email, user.Password, user.TwoFactorAuth, email)
 		err := scanUserRow(row, &updatedUser)
 		if err != nil {
-			daoLog.Info("Unable to execute UserPgDao.Update(email string, user models.User) query. Reason:", err)
+			logs.DaoLog.Infof("Unable to execute UserPgDao.Update(email string, user models.User) query. Reason: %v", err)
 		} else {
-			daoLog.Debug("Updated user", updatedUser)
+			logs.DaoLog.Infof("Updated user %v", updatedUser)
 		}
 		return updatedUser, err
 	})
@@ -108,15 +113,16 @@ func (dao UserPgDao) Update(email string, user *models.User) (models.User, error
 }
 
 func (dao UserPgDao) Delete(email string) error {
+	logs.DaoLog.Debug("Delete")
 	_, err := withDb(func(db *sql.DB) (interface{}, error) {
 		result, err := db.Exec(deleteUserQuery, email)
 		if err != nil {
-			daoLog.Info("Unable to execute UserPgDao.Delete(email string) query. Reason:", err)
+			logs.DaoLog.Infof("Unable to execute UserPgDao.Delete(email string) query. Reason: %v", err)
 		} else {
 			var rowsAffected int64
 			rowsAffected, err = result.RowsAffected()
 			if err != nil {
-				daoLog.Info("Some error occured during deleting:", err)
+				logs.DaoLog.Info("Some error occured during deleting:", err)
 			} else {
 				switch {
 				case rowsAffected == 0:
@@ -125,9 +131,9 @@ func (dao UserPgDao) Delete(email string) error {
 					err = errors.New("more than one deleted")
 				}
 				if err != nil {
-					daoLog.Debug("Unable to delete user with email \""+email+"\" correctly. Reason:", err)
+					logs.DaoLog.Info("Unable to delete user with email \""+email+"\" correctly. Reason:", err)
 				} else {
-					daoLog.Debug("User with email \"" + email + "\" successfully deleted")
+					logs.DaoLog.Info("User with email \"" + email + "\" successfully deleted")
 				}
 			}
 		}
@@ -141,6 +147,7 @@ type polimorphicScanner interface {
 }
 
 func scanUserRow(scanner polimorphicScanner, user *models.User) error {
+	logs.DaoLog.Debug("scanUserRow")
 	err := scanner.Scan(
 		&user.CreatedAt,
 		&user.UpdatedAt,
