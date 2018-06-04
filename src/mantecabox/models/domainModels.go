@@ -36,6 +36,7 @@ type File struct {
 	SoftDelete
 	Name  string `json:"name"`
 	Owner User   `json:"owner"`
+	GdriveID null.String `json:"gdrive_id"`
 }
 
 type FileDTO struct {

@@ -21,7 +21,7 @@ WHERE f.deleted_at IS NULL AND u.deleted_at IS NULL AND u.email = $1`
 FROM files f
   JOIN users u ON f.owner = u.email
 WHERE f.deleted_at IS NULL AND u.deleted_at IS NULL AND f.name = $1 AND u.email = $2`
-	insertFileQuery = `INSERT INTO files (name, owner) VALUES ($1, $2) RETURNING *;`
+	insertFileQuery = `INSERT INTO files (name, owner, gdrive_id) VALUES ($1, $2, $3) RETURNING *;`
 	updateFileQuery = `UPDATE files SET name = $1, owner = $2 WHERE id = $3 RETURNING *`
 	deleteFileQuery = "UPDATE files SET deleted_at = NOW() WHERE name = $1 AND owner = $2"
 )
@@ -72,7 +72,7 @@ func (dao FilePgDao) GetByPk(filename string, user *models.User) (models.File, e
 func (dao FilePgDao) Create(file *models.File) (models.File, error) {
 	res, err := withDb(func(db *sql.DB) (interface{}, error) {
 		var createdFile models.File
-		row := db.QueryRow(insertFileQuery, file.Name, file.Owner.Email)
+		row := db.QueryRow(insertFileQuery, file.Name, file.Owner.Email, file.GdriveID)
 		err := scanFileRow(row, &createdFile)
 		if err != nil {
 			daoLog.Info("Unable to execute FilePgDao.Create(file models.File) query. Reason:", err)
@@ -140,7 +140,8 @@ func scanFileRow(scanner polimorphicScanner, file *models.File) error {
 		&file.UpdatedAt,
 		&file.DeletedAt,
 		&file.Name,
-		&file.Owner.Email)
+		&file.Owner.Email,
+		&file.GdriveID)
 	return err
 }
 
@@ -151,6 +152,8 @@ func scanFileRowWithUser(scanner polimorphicScanner, file *models.File) error {
 		&file.DeletedAt,
 		&file.Name,
 		&file.Owner.Email,
+		&file.GdriveID,
+		// user
 		&file.Owner.CreatedAt,
 		&file.Owner.UpdatedAt,
 		&file.Owner.DeletedAt,
