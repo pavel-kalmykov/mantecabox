@@ -38,8 +38,8 @@ VALUES ('testfile1a', 'testuser1'),
   ('testfile2a', 'testuser2'),
   ('testfile2b', 'testuser2');`,
 			[]models.File{
-				{Name: "testfile1a", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}},
-				{Name: "testfile1b", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}},
+				{Name: "testfile1a", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}, PermissionsStr: "rw-r--r--"},
+				{Name: "testfile1b", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}, PermissionsStr: "rw-r--r--"},
 			},
 			args{models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}},
 		},
@@ -57,7 +57,7 @@ VALUES (NULL, 'testfile1a', 'testuser1'),
   (NULL, 'testfile2a', 'testuser2'),
   (NOW(), 'testfile2b', 'testuser2');`,
 			[]models.File{
-				{Name: "testfile1a", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}},
+				{Name: "testfile1a", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}, PermissionsStr: "rw-r--r--"},
 			},
 			args{models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}},
 		},
@@ -116,7 +116,7 @@ func TestFilePgDao_GetByPk(t *testing.T) {
 			"When you ask for an existent file, retrieve it",
 			testFileInsertQuery,
 			args{"testfile1a", &models.User{Credentials: models.Credentials{Email: "testuser1"}}},
-			models.File{Name: "testfile1a", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}},
+			models.File{Name: "testfile1a", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}, PermissionsStr: "rw-r--r--"},
 			false,
 		},
 		{
@@ -149,7 +149,7 @@ func TestFilePgDao_GetByPk(t *testing.T) {
 }
 
 func TestFilePgDao_Create(t *testing.T) {
-	file := models.File{Name: "testfile", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}}
+	file := models.File{Name: "testfile", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}, PermissionsStr: "rw-r--r--"}
 	fileWithoutName := file
 	fileWithoutName.Name = ""
 	fileWithoutOwner := file
@@ -206,7 +206,7 @@ func TestFilePgDao_Create(t *testing.T) {
 }
 
 func TestUpdate(t *testing.T) {
-	updatedFile := models.File{Name: "updatedfile", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}}
+	updatedFile := models.File{Name: "updatedfile", Owner: models.User{Credentials: models.Credentials{Email: "testuser1", Password: "testpassword1"}}, PermissionsStr: "rw-r--r--"}
 	updatedFileWithoutFilename := updatedFile
 	updatedFileWithoutFilename.Name = ""
 	updatedFileWithoutOwner := updatedFile

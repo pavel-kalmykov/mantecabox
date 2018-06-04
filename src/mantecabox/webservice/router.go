@@ -39,6 +39,7 @@ func Router(useJWT bool, configuration *models.Configuration) *gin.Engine {
 	}
 
 	files.GET("/:file", fileController.GetFile)
+	files.GET("/:file/download", fileController.DownloadFile)
 	files.GET("", fileController.GetAllFiles)
 	files.POST("", fileController.UploadFile)
 	files.DELETE("/:file", fileController.DeleteFile)
