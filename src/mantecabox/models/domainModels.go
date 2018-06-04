@@ -34,8 +34,9 @@ type File struct {
 	Id int64 `json:"id"`
 	TimeStamp
 	SoftDelete
-	Name           string `json:"name"`
-	Owner          User   `json:"owner"`
+	Name  string `json:"name"`
+	Owner User   `json:"owner"`
+	GdriveID null.String `json:"gdrive_id"`
 	PermissionsStr string `json:"permissions"`
 }
 
