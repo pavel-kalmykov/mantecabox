@@ -1,8 +1,10 @@
-package main
+package services
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -36,7 +38,7 @@ func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
 		log.Fatalf("Unable to read authorization code %v", err)
 	}
 
-	tok, err := config.Exchange(oauth2.NoContext, authCode)
+	tok, err := config.Exchange(context.Background(), authCode)
 	if err != nil {
 		log.Fatalf("Unable to retrieve token from web %v", err)
 	}
@@ -66,76 +68,28 @@ func saveToken(path string, token *oauth2.Token) {
 	json.NewEncoder(f).Encode(token)
 }
 
-func main() {
+func GetGdriveService() (*drive.Service, error) {
 	b, err := ioutil.ReadFile("client_secret.json")
 	if err != nil {
-		log.Fatalf("Unable to read client secret file: %v", err)
+		return nil, errors.New(fmt.Sprintf("Unable to read client secret file: %v", err))
 	}
 
 	// If modifying these scopes, delete your previously saved client_secret.json.
 	config, err := google.ConfigFromJSON(b, drive.DriveMetadataReadonlyScope)
 	if err != nil {
-		log.Fatalf("Unable to parse client secret file to config: %v", err)
+		return nil, errors.New(fmt.Sprintf("Unable to parse client secret file to config: %v", err))
 	}
 
 	srv, err := drive.New(getClient(config))
 	if err != nil {
-		log.Fatalf("Unable to retrieve Drive client: %v", err)
-
+		return nil, errors.New(fmt.Sprintf("Unable to retrieve Drive client: %v", err))
 	}
 
-	// filedId := "1c2kXskYezmCSAdVev0SJnGDibK6JTXVJ" // get one available in file list
-	// filename := "configuration.json"
-	// filename := "configuration.test.json"
-	// file, err := os.Open(filename)
-	// if err != nil {
-	// 	panic(err)
-	// }
+	return  srv, err
+}
 
-	// File download
-	// driveFile, err := srv.Files.Get(filedId).Do()
-	// if err != nil {
-	// 	log.Fatalf("Unable to get file: %v", err)
-	// }
-	// log.Printf("got file: %+v (%v)", driveFile.Name, driveFile.Id)
-	// response, err := srv.Files.Get(filedId).Download()
-	// if err != nil {
-	// 	log.Fatalf("Unable to download file: %v", err)
-	// }
-	// outFile, err := os.Create("downloaded.json")
-	// if err != nil {
-	// 	log.Fatalf("Unable to create file: %v", err)
-	// }
-	// defer outFile.Close()
-	// _, err = io.Copy(outFile, response.Body)
-	// if err != nil {
-	// 	log.Fatalf("Unable to write file: %v", err)
-	// }
-	// log.Println("done")
-
-	// File upload
-	// driveFile, err := srv.Files.Create(&drive.File{Name: filename}).Media(file).Do()
-	// if err != nil {
-	// 	log.Fatalf("Unable to create file: %v", err)
-	// }
-	// log.Printf("uploaded file: %+v (%v)", driveFile.Name, driveFile.Id)
-	// log.Println("done")
-
-	// File update
-	// driveFile, err := srv.Files.Update(filedId, &drive.File{Name: filename}).Media(file).Do()
-	// if err != nil {
-	// 	log.Fatalf("Unable to update file: %v", err)
-	// }
-	// log.Printf("updated file: %+v (%v)", driveFile.Name, driveFile.Id)
-	// log.Println("done")
-
-	// File delete
-	// err = srv.Files.Delete(filedId).Do()
-	// if err != nil {
-	// 	log.Fatalf("Unable to delete file: %v", err)
-	// }
-
-	// File list
+// File list
+func ListFiles(srv *drive.Service) {
 	r, err := srv.Files.List().
 		Fields("nextPageToken, files(id, name)").Do()
 	if err != nil {
@@ -149,4 +103,55 @@ func main() {
 			fmt.Printf("%s (%s)\n", i.Name, i.Id)
 		}
 	}
+}
+
+// File delere
+func RemoveFile(srv *drive.Service, filedId string) {
+	 err := srv.Files.Delete(filedId).Do()
+	 if err != nil {
+	 	log.Fatalf("Unable to delete file: %v", err)
+	 }
+}
+
+// File upload
+func UploadFile(srv *drive.Service, filename string, file io.Reader) {
+	driveFile, err := srv.Files.Create(&drive.File{Name: filename}).Media(file).Do()
+	if err != nil {
+		log.Fatalf("Unable to create file: %v", err)
+	}
+	log.Printf("uploaded file: %+v (%v)", driveFile.Name, driveFile.Id)
+	log.Println("done")
+}
+
+// File update
+func UpdateFile(srv *drive.Service, filedId string, filename string, file io.Reader) {
+	 driveFile, err := srv.Files.Update(filedId, &drive.File{Name: filename}).Media(file).Do()
+	 if err != nil {
+	 	log.Fatalf("Unable to update file: %v", err)
+	 }
+	 log.Printf("updated file: %+v (%v)", driveFile.Name, driveFile.Id)
+	 log.Println("done")
+}
+
+// File download
+func DownloadFile(srv *drive.Service, filedId string) {
+	driveFile, err := srv.Files.Get(filedId).Do()
+	if err != nil {
+		log.Fatalf("Unable to get file: %v", err)
+	}
+	log.Printf("got file: %+v (%v)", driveFile.Name, driveFile.Id)
+	response, err := srv.Files.Get(filedId).Download()
+	if err != nil {
+		log.Fatalf("Unable to download file: %v", err)
+	}
+	outFile, err := os.Create("downloaded.json")
+	if err != nil {
+		log.Fatalf("Unable to create file: %v", err)
+	}
+	defer outFile.Close()
+	_, err = io.Copy(outFile, response.Body)
+	if err != nil {
+		log.Fatalf("Unable to write file: %v", err)
+	}
+	log.Println("done")
 }
