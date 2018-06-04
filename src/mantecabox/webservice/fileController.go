@@ -174,10 +174,12 @@ func (fileController FileControllerImpl) download(filename string, file models.F
 		}
 	}
 
-	// Local download
-	// fileDecrypt, err := fileController.fileService.GetDecryptedLocalFile(file)
-	// GDrive download
-	fileDecrypt, err := fileController.fileService.GetFileGDrive(file)
+	var fileDecrypt []byte
+	if fileController.configuration.UseGDrive {
+		fileDecrypt, err = fileController.fileService.GetFileGDrive(file)
+	} else {
+		fileDecrypt, err = fileController.fileService.GetDecryptedLocalFile(file)
+	}
 
 	if err != nil {
 		sendJsonMsg(context, http.StatusInternalServerError, fmt.Sprintf(`Unable to find file "%v": %v`, filename, err))
@@ -209,21 +211,21 @@ func (fileController FileControllerImpl) UploadFile(context *gin.Context) {
 		return
 	}
 
-	// Normal upload
-	// err = fileController.fileService.SaveFile(file, fileModel)
-
-	// Gdrive upload
-	gService, err := services.GetGdriveService()
-	if err != nil {
-		sendJsonMsg(context, http.StatusInternalServerError, err.Error())
-		return
+	if fileController.configuration.UseGDrive {
+		gService, err := services.GetGdriveService()
+		if err != nil {
+			sendJsonMsg(context, http.StatusInternalServerError, err.Error())
+			return
+		}
+		fileDrive, err := fileController.fileService.UploadFileGDrive(gService, strconv.FormatInt(fileModel.Id, 10), file)
+		if err != nil {
+			sendJsonMsg(context, http.StatusInternalServerError, "Unable to upload file to google drive: "+err.Error())
+			return
+		}
+		err = fileController.fileService.SetGdriveId(fileModel.Id, fileDrive.Id)
+	} else {
+		err = fileController.fileService.SaveFile(file, fileModel)
 	}
-	fileDrive, err := fileController.fileService.UploadFileGDrive(gService, strconv.FormatInt(fileModel.Id, 10), file)
-	if err != nil {
-		sendJsonMsg(context, http.StatusInternalServerError, "Unable to upload file to google drive: "+err.Error())
-		return
-	}
-	err = fileController.fileService.SetGdriveId(fileModel.Id, fileDrive.Id)
 
 	if err != nil {
 		sendJsonMsg(context, http.StatusInternalServerError, err.Error())

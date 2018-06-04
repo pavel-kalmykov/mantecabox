@@ -5,6 +5,7 @@
   "verification_mail_time_limit": "5m",
   "max_unsuccessful_attempts": 3,
   "files_path": "files/",
+  "use_gdrive": true,
   "database": {
     "engine": "postgres",
     "host": "localhost",
