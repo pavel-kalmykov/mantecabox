@@ -29,6 +29,7 @@ type (
 		GetFileStream(fileDecrypt []byte, file models.File) (contentLength int64, contentType string, reader *bytes.Reader, extraHeaders map[string]string)
 		GetDecryptedLocalFile(file models.File) ([]byte, error)
 		CreateFile(file *models.File) (models.File, error)
+		SetGdriveId(id int64, gdriveId string) error
 		SaveFile(file multipart.File, uploadedFile models.File) error
 		DeleteFile(filename string, user *models.User) (models.File, error)
 		createDirIfNotExists()
@@ -112,6 +113,10 @@ func (fileService FileServiceImpl) GetFileStream(fileDecrypt []byte, file models
 
 func (fileService FileServiceImpl) CreateFile(file *models.File) (models.File, error) {
 	return fileService.fileDao.Create(file)
+}
+
+func (fileService FileServiceImpl) SetGdriveId(id int64, gdriveId string) error {
+	return fileService.fileDao.SetGdriveId(id, gdriveId)
 }
 
 func (fileService FileServiceImpl) encryptFile(file multipart.File) ([]byte, error) {

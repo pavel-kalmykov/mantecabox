@@ -7,13 +7,13 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"mime/multipart"
 	"net/http"
 	"os"
 
 	"mantecabox/models"
 
+	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -39,12 +39,12 @@ func getTokenFromWeb(config *oauth2.Config) *oauth2.Token {
 
 	var authCode string
 	if _, err := fmt.Scan(&authCode); err != nil {
-		log.Fatalf("Unable to read authorization code %v", err)
+		logrus.Fatalf("Unable to read authorization code %v", err)
 	}
 
 	tok, err := config.Exchange(context.Background(), authCode)
 	if err != nil {
-		log.Fatalf("Unable to retrieve token from web %v", err)
+		logrus.Fatalf("Unable to retrieve token from web %v", err)
 	}
 	return tok
 }
@@ -67,7 +67,7 @@ func saveToken(path string, token *oauth2.Token) {
 	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0600)
 	defer f.Close()
 	if err != nil {
-		log.Fatalf("Unable to cache oauth token: %v", err)
+		logrus.Fatalf("Unable to cache oauth token: %v", err)
 	}
 	json.NewEncoder(f).Encode(token)
 }
@@ -89,7 +89,7 @@ func GetGdriveService() (*drive.Service, error) {
 		return nil, errors.New(fmt.Sprintf("Unable to retrieve Drive client: %v", err))
 	}
 
-	return  srv, err
+	return srv, err
 }
 
 // File list
@@ -97,7 +97,7 @@ func ListFiles(srv *drive.Service) {
 	r, err := srv.Files.List().
 		Fields("nextPageToken, files(id, name)").Do()
 	if err != nil {
-		log.Fatalf("Unable to retrieve files: %v", err)
+		logrus.Fatalf("Unable to retrieve files: %v", err)
 	}
 	fmt.Println("Files:")
 	if len(r.Files) == 0 {
@@ -111,12 +111,12 @@ func ListFiles(srv *drive.Service) {
 
 // File delere
 func RemoveFile(srv *drive.Service, filedId string) error {
-	 err := srv.Files.Delete(filedId).Do()
-	 if err != nil {
-	 	return err
-	 }
+	err := srv.Files.Delete(filedId).Do()
+	if err != nil {
+		return err
+	}
 
-	 return nil
+	return nil
 }
 
 // File upload
@@ -129,11 +129,11 @@ func (fileService FileServiceImpl) UploadFileGDrive(srv *drive.Service, filename
 
 	driveFile, err := srv.Files.Create(&drive.File{Name: filename}).Media(bytes.NewReader(fileEncrypted)).Do()
 	if err != nil {
-		log.Fatalf("Unable to create file: %v", err)
+		logrus.Fatalf("Unable to create file: %v", err)
 		return nil, err
 	}
 
-	log.Printf("uploaded file: %+v (%v)", driveFile.Name, driveFile.Id)
+	logrus.Printf("uploaded file: %+v (%v)", driveFile.Name, driveFile.Id)
 
 	return driveFile, err
 }
@@ -141,19 +141,19 @@ func (fileService FileServiceImpl) UploadFileGDrive(srv *drive.Service, filename
 // File update
 func UpdateFile(srv *drive.Service, filedId string, filename string, file io.Reader) error {
 
-	 _, err := srv.Files.Update(filedId, &drive.File{Name: filename}).Media(file).Do()
-	 if err != nil {
-	 	return err
-	 }
+	_, err := srv.Files.Update(filedId, &drive.File{Name: filename}).Media(file).Do()
+	if err != nil {
+		return err
+	}
 
-	 return nil
+	return nil
 }
 
 // File download
 func (fileService FileServiceImpl) DownloadFile(srv *drive.Service, filedId string, file models.File) ([]byte, error) {
 	_, err := srv.Files.Get(filedId).Do()
 	if err != nil {
-		return  nil, err
+		return nil, err
 	}
 
 	response, err := srv.Files.Get(filedId).Download()
