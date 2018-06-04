@@ -39,24 +39,21 @@ func main() {
 		if err != nil {
 			fmt.Fprintf(os.Stderr, cli.ErrorMessage("An error ocurred during signup: %v\n", err.Error()))
 		}
-		break
 	case "login":
 		err := cli.Login(cli.ReadCredentials)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, cli.ErrorMessage("An error ocurred during login: %v\n", err.Error()))
 		}
-		break
 	case "transfer":
 		err := cli.Transfer(args.TransferActions)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, cli.ErrorMessage("An error ocurred during transfer: %v\n", err.Error()))
 		}
-		break
+	case "daemon":
+		cli.StartDaemon()
 	case "help":
 		parser.WriteHelp(os.Stdin)
-		break
 	default:
 		parser.Fail(cli.ErrorMessage(`Operation "%v" not recognized`, args.Operation))
-		break
 	}
 }
