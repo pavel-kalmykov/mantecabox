@@ -75,7 +75,7 @@ func scanLoginAttemptWithNestedUser(rows *sql.Rows) ([]models.LoginAttempt, erro
 		attempts = append(attempts, attempt)
 	}
 
-	daoLog.Debug("Queried", len(attempts), "login attempts")
+	daoLog.Debug("Queried  ", len(attempts), " login attempts")
 	return attempts, nil
 }
 

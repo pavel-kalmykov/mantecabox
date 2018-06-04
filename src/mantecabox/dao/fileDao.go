@@ -65,7 +65,7 @@ func (dao FilePgDao) GetAllByOwner(user *models.User) ([]models.File, error) {
 			files = append(files, file)
 		}
 
-		daoLog.Debug("Queried", len(files), "files")
+		daoLog.Debug("Queried ", len(files), " files")
 		return files, err
 	})
 	return res.([]models.File), err
@@ -90,7 +90,7 @@ func (dao FilePgDao) GetVersionsByNameAndOwner(filename string, user *models.Use
 			files = append(files, file)
 		}
 
-		daoLog.Debug("Queried", len(files), "files")
+		daoLog.Debug("Queried ", len(files), " files")
 		return files, err
 	})
 	return res.([]models.File), err
@@ -104,7 +104,7 @@ func (dao FilePgDao) GetLastVersionFileByNameAndOwner(filename string, user *mod
 		if err != nil {
 			daoLog.Debug("Unable to execute FilePgDao.GetLastVersionFileByNameAndOwner(filename string, user *models.User) query. Reason:", err)
 		} else {
-			daoLog.Debug("Retrieved file ", file)
+			daoLog.Debug("Retrieved file ", models.FileToDto(file))
 		}
 		return file, err
 	})
@@ -119,7 +119,7 @@ func (dao FilePgDao) GetFileByVersion(id int64) (models.File, error) {
 		if err != nil {
 			daoLog.Debug("Unable to execute FilePgDao.GetFileByVersion(id int64) query. Reason:", err)
 		} else {
-			daoLog.Debug("Retrieved file ", file)
+			daoLog.Debug("Retrieved file ", models.FileToDto(file))
 		}
 		return file, err
 	})

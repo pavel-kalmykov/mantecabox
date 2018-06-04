@@ -6,6 +6,7 @@ import (
 
 	"mantecabox/models"
 
+	"github.com/PeteProgrammer/go-automapper"
 	"github.com/sirupsen/logrus"
 )
 
@@ -51,7 +52,7 @@ func (dao UserPgDao) GetAll() ([]models.User, error) {
 			users = append(users, user)
 		}
 
-		daoLog.Debug("Queried", len(users), "users")
+		daoLog.Debug("Queried ", len(users), " users")
 		return users, err
 	})
 	return res.([]models.User), err
@@ -65,7 +66,9 @@ func (dao UserPgDao) GetByPk(email string) (models.User, error) {
 		if err != nil {
 			daoLog.Debug("Unable to execute UserPgDao.GetVersionsByNameAndOwner(email string) query. Reason:", err)
 		} else {
-			daoLog.Debug("Retrieved user", user)
+			var dto models.UserDto
+			automapper.Map(user, &dto)
+			daoLog.Debug("Retrieved user", dto)
 		}
 		return user, err
 	})
