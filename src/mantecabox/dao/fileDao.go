@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"mantecabox/logs"
 	"mantecabox/models"
 )
 
@@ -49,11 +50,12 @@ type (
 )
 
 func (dao FilePgDao) GetAllByOwner(user *models.User) ([]models.File, error) {
+	logs.DaoLog.Debug("GetAllByOwner")
 	res, err := withDb(func(db *sql.DB) (interface{}, error) {
 		files := make([]models.File, 0)
 		rows, err := db.Query(getAllFilesByOwnerQuery, user.Email)
 		if err != nil {
-			daoLog.Info("Unable to execute FilePgDao.GetAllByOwner(user *models.User) query. Reason:", err)
+			logs.DaoLog.Errorf("Unable to execute FilePgDao.GetAllByOwner(user *models.User) query. Reason: %v", err)
 			return nil, err
 		}
 
@@ -61,24 +63,25 @@ func (dao FilePgDao) GetAllByOwner(user *models.User) ([]models.File, error) {
 			var file models.File
 			err := scanFileRowWithUser(rows, &file)
 			if err != nil {
-				daoLog.Info("Unable to execute FilePgDao.GetAllByOwner(user *models.User) query. Reason:", err)
+				logs.DaoLog.Errorf("Unable to execute FilePgDao.GetAllByOwner(user *models.User) query. Reason: %v", err)
 				return nil, err
 			}
 			files = append(files, file)
 		}
 
-		daoLog.Debug("Queried ", len(files), " files")
+		logs.DaoLog.Info("Queried ", len(files), " files")
 		return files, err
 	})
 	return res.([]models.File), err
 }
 
 func (dao FilePgDao) GetVersionsByNameAndOwner(filename string, user *models.User) ([]models.File, error) {
+	logs.DaoLog.Debug("GetVersionsByNameAndOwner")
 	res, err := withDb(func(db *sql.DB) (interface{}, error) {
 		files := make([]models.File, 0)
 		rows, err := db.Query(getFileVersionsByNameAndOwner, filename, user.Email)
 		if err != nil {
-			daoLog.Info("Unable to execute FilePgDao.GetVersionsByNameAndOwner(filename string, user *models.User) query. Reason:", err)
+			logs.DaoLog.Errorf("Unable to execute FilePgDao.GetVersionsByNameAndOwner(filename string, user *models.User) query. Reason: %v", err)
 			return nil, err
 		}
 
@@ -86,27 +89,28 @@ func (dao FilePgDao) GetVersionsByNameAndOwner(filename string, user *models.Use
 			var file models.File
 			err := scanFileRowWithUser(rows, &file)
 			if err != nil {
-				daoLog.Info("Unable to execute FilePgDao.GetVersionsByNameAndOwner(filename string, user *models.User) query. Reason:", err)
+				logs.DaoLog.Errorf("Unable to execute FilePgDao.GetVersionsByNameAndOwner(filename string, user *models.User) query. Reason: %v", err)
 				return nil, err
 			}
 			files = append(files, file)
 		}
 
-		daoLog.Debug("Queried ", len(files), " files")
+		logs.DaoLog.Info("Queried ", len(files), " files")
 		return files, err
 	})
 	return res.([]models.File), err
 }
 
 func (dao FilePgDao) GetLastVersionFileByNameAndOwner(filename string, user *models.User) (models.File, error) {
+	logs.DaoLog.Debug("GetLastVersionFileByNameAndOwner")
 	res, err := withDb(func(db *sql.DB) (interface{}, error) {
 		file := models.File{}
 		row := db.QueryRow(getLastVersionFileByNameAndOwnerQuery, filename, user.Email)
 		err := scanFileRowWithUser(row, &file)
 		if err != nil {
-			daoLog.Debug("Unable to execute FilePgDao.GetLastVersionFileByNameAndOwner(filename string, user *models.User) query. Reason:", err)
+			logs.DaoLog.Infof("Unable to execute FilePgDao.GetLastVersionFileByNameAndOwner(filename string, user *models.User) query. Reason: %v", err)
 		} else {
-			daoLog.Debug("Retrieved file ", models.FileToDto(file))
+			logs.DaoLog.Infof("Retrieved file %v", models.FileToDto(file))
 		}
 		return file, err
 	})
@@ -114,14 +118,15 @@ func (dao FilePgDao) GetLastVersionFileByNameAndOwner(filename string, user *mod
 }
 
 func (dao FilePgDao) GetFileByVersion(id int64) (models.File, error) {
+	logs.DaoLog.Debug("GetFileByVersion")
 	res, err := withDb(func(db *sql.DB) (interface{}, error) {
 		file := models.File{}
 		row := db.QueryRow(getFileByVersionQuery, id)
 		err := scanFileRowWithUser(row, &file)
 		if err != nil {
-			daoLog.Debug("Unable to execute FilePgDao.GetFileByVersion(id int64) query. Reason:", err)
+			logs.DaoLog.Infof("Unable to execute FilePgDao.GetFileByVersion(id int64) query. Reason: %v", err)
 		} else {
-			daoLog.Debug("Retrieved file ", models.FileToDto(file))
+			logs.DaoLog.Infof("Retrieved file %v", models.FileToDto(file))
 		}
 		return file, err
 	})
@@ -129,14 +134,15 @@ func (dao FilePgDao) GetFileByVersion(id int64) (models.File, error) {
 }
 
 func (dao FilePgDao) Create(file *models.File) (models.File, error) {
+	logs.DaoLog.Debug("Create")
 	res, err := withDb(func(db *sql.DB) (interface{}, error) {
 		var createdFile models.File
 		row := db.QueryRow(insertFileQuery, file.Name, file.Owner.Email)
 		err := scanFileRow(row, &createdFile)
 		if err != nil {
-			daoLog.Info("Unable to execute FilePgDao.Create(file models.File) query. Reason:", err)
+			logs.DaoLog.Errorf("Unable to execute FilePgDao.Create(file models.File) query. Reason: %v", err)
 		} else {
-			daoLog.Debug("Created file: ", createdFile)
+			logs.DaoLog.Infof("Created file: %v", createdFile)
 		}
 		owner, err := UserPgDao{}.GetByPk(createdFile.Owner.Email)
 		createdFile.Owner = owner
@@ -146,23 +152,24 @@ func (dao FilePgDao) Create(file *models.File) (models.File, error) {
 }
 
 func (dao FilePgDao) SetGdriveId(id int64, gdriveId string) error {
+	logs.DaoLog.Debug("SetGdriveId")
 	_, err := withDb(func(db *sql.DB) (interface{}, error) {
 		result, err := db.Exec(setGDriveIdQuery, gdriveId, id)
 		if err != nil {
-			daoLog.Info("Unable to execute FilePgDao.Delete(id int64) query. Reason:", err)
+			logs.DaoLog.Errorf("Unable to execute FilePgDao.Delete(id int64) query. Reason: %v", err)
 		} else {
 			var rowsAffected int64
 			rowsAffected, err = result.RowsAffected()
 			if err != nil {
-				daoLog.Info("Some error occured during setting gdrive id:", err)
+				logs.DaoLog.Errorf("Some error occured during setting gdrive id: %v", err)
 			} else {
 				if rowsAffected == 0 {
 					err = errors.New("not found")
 				}
 				if err != nil {
-					daoLog.Debug(fmt.Sprintf(`Unable to set %v's file gdrive id "%v". Reason %v`, id, gdriveId, err))
+					logs.DaoLog.Info(fmt.Sprintf(`Unable to set %v's file gdrive id "%v". Reason %v`, id, gdriveId, err))
 				} else {
-					daoLog.Debug(fmt.Sprintf(`%v's' file gdrive id "%v" successfully set.`, id, gdriveId))
+					logs.DaoLog.Info(fmt.Sprintf(`%v's' file gdrive id "%v" successfully set.`, id, gdriveId))
 				}
 			}
 		}
@@ -172,23 +179,24 @@ func (dao FilePgDao) SetGdriveId(id int64, gdriveId string) error {
 }
 
 func (dao FilePgDao) Delete(filename string, user *models.User) error {
+	logs.DaoLog.Debug("Delete")
 	_, err := withDb(func(db *sql.DB) (interface{}, error) {
 		result, err := db.Exec(deleteFileQuery, filename, user.Email)
 		if err != nil {
-			daoLog.Info("Unable to execute FilePgDao.Delete(id int64) query. Reason:", err)
+			logs.DaoLog.Error("Unable to execute FilePgDao.Delete(id int64) query. Reason:", err)
 		} else {
 			var rowsAffected int64
 			rowsAffected, err = result.RowsAffected()
 			if err != nil {
-				daoLog.Info("Some error occured during deleting:", err)
+				logs.DaoLog.Error("Some error occured during deleting:", err)
 			} else {
 				if rowsAffected == 0 {
 					err = errors.New("not found")
 				}
 				if err != nil {
-					daoLog.Debug(fmt.Sprintf(`Unable to delete %v's' file "%v". Reason %v`, user.Email, filename, err))
+					logs.DaoLog.Info(fmt.Sprintf(`Unable to delete %v's' file "%v". Reason %v`, user.Email, filename, err))
 				} else {
-					daoLog.Debug(fmt.Sprintf(`%v's' file "%v" successfully deleted.`, user.Email, filename))
+					logs.DaoLog.Info(fmt.Sprintf(`%v's' file "%v" successfully deleted.`, user.Email, filename))
 				}
 			}
 		}
@@ -198,6 +206,7 @@ func (dao FilePgDao) Delete(filename string, user *models.User) error {
 }
 
 func scanFileRow(scanner polimorphicScanner, file *models.File) error {
+	logs.DaoLog.Debug("scanFileRow")
 	err := scanner.Scan(&file.Id,
 		&file.CreatedAt,
 		&file.UpdatedAt,
@@ -210,6 +219,7 @@ func scanFileRow(scanner polimorphicScanner, file *models.File) error {
 }
 
 func scanFileRowWithUser(scanner polimorphicScanner, file *models.File) error {
+	logs.DaoLog.Debug("scanFileRowWithUser")
 	err := scanner.Scan(&file.Id,
 		&file.CreatedAt,
 		&file.UpdatedAt,

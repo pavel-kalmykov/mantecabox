@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"mantecabox/logs"
 	"mantecabox/models"
 	"mantecabox/services"
 
@@ -48,6 +49,7 @@ func (fileController FileControllerImpl) GetAllFiles(context *gin.Context) {
 	files, err := fileController.fileService.GetAllFiles(getUser(context))
 	if err != nil {
 		sendJsonMsg(context, http.StatusInternalServerError, "Unable to retrieve files: "+err.Error())
+		logs.ControllerLog.Error("Unable to retrieve files: "+err.Error())
 		return
 	}
 	filesDto := funcs.Maps(files, models.FileToDto).([]models.FileDTO)
@@ -60,6 +62,7 @@ func (fileController FileControllerImpl) GetAllFileVersions(context *gin.Context
 	files, err := fileController.fileService.GetFileVersionsByNameAndOwner(filename, &user)
 	if err != nil {
 		sendJsonMsg(context, http.StatusInternalServerError, "Unable to retrieve files: "+err.Error())
+		logs.ControllerLog.Error("Unable to retrieve files: "+err.Error())
 		return
 	}
 	filesDto := funcs.Maps(files, models.FileToDto).([]models.FileDTO)
@@ -74,9 +77,11 @@ func (fileController FileControllerImpl) GetFile(context *gin.Context) {
 	if err != nil {
 		if err == sql.ErrNoRows {
 			sendJsonMsg(context, http.StatusNotFound, fmt.Sprintf(`Unable to find file "%v": %v`, filename, err))
+			logs.ControllerLog.Error(fmt.Sprintf(`Unable to find file "%v": %v`, filename, err))
 			return
 		} else {
 			sendJsonMsg(context, http.StatusInternalServerError, fmt.Sprintf(`Unable to find file "%v": %v`, filename, err))
+			logs.ControllerLog.Error(fmt.Sprintf(`Unable to find file "%v": %v`, filename, err))
 			return
 		}
 	}
@@ -90,15 +95,18 @@ func (fileController FileControllerImpl) GetFileVersion(context *gin.Context) {
 	version, err := strconv.ParseInt(versionStr, 10, 64)
 	if err != nil {
 		sendJsonMsg(context, http.StatusInternalServerError, "Unable to parse version number: "+err.Error())
+		logs.ControllerLog.Error("Unable to parse version number: "+err.Error())
 		return
 	}
 	file, err := fileController.fileService.GetFileByVersion(filename, version, &user)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			sendJsonMsg(context, http.StatusNotFound, fmt.Sprintf(`Unable to find file "%v" version %v: %v`, filename, version, err))
+			logs.ControllerLog.Error(fmt.Sprintf(`Unable to find file "%v" version %v: %v`, filename, version, err))
 			return
 		} else {
 			sendJsonMsg(context, http.StatusInternalServerError, fmt.Sprintf(`Unable to find file "%v" version %v: %v`, filename, version, err))
+			logs.ControllerLog.Error(fmt.Sprintf(`Unable to find file "%v" version %v: %v`, filename, version, err))
 			return
 		}
 	}
@@ -156,6 +164,7 @@ func (fileController FileControllerImpl) DownloadFileVersion(context *gin.Contex
 	version, err := strconv.ParseInt(versionStr, 10, 64)
 	if err != nil {
 		sendJsonMsg(context, http.StatusInternalServerError, "Unable to parse version number: "+err.Error())
+		logs.ControllerLog.Error("Unable to parse version number: "+err.Error())
 		return
 	}
 
@@ -167,9 +176,11 @@ func (fileController FileControllerImpl) download(filename string, file models.F
 	if err != nil {
 		if err == sql.ErrNoRows {
 			sendJsonMsg(context, http.StatusNotFound, fmt.Sprintf(`Unable to find file "%v": %v`, filename, err))
+			logs.ControllerLog.Error(fmt.Sprintf(`Unable to find file "%v": %v`, filename, err))
 			return
 		} else {
 			sendJsonMsg(context, http.StatusInternalServerError, fmt.Sprintf(`Unable to find file "%v": %v`, filename, err))
+			logs.ControllerLog.Error(fmt.Sprintf(`Unable to find file "%v": %v`, filename, err))
 			return
 		}
 	}
@@ -183,6 +194,7 @@ func (fileController FileControllerImpl) download(filename string, file models.F
 
 	if err != nil {
 		sendJsonMsg(context, http.StatusInternalServerError, fmt.Sprintf(`Unable to find file "%v": %v`, filename, err))
+		logs.ControllerLog.Error(fmt.Sprintf(`Unable to find file "%v": %v`, filename, err))
 	}
 
 	contentLength, contentType, reader, extraHeaders := fileController.fileService.GetFileStream(fileDecrypt, file)
@@ -194,10 +206,12 @@ func (fileController FileControllerImpl) UploadFile(context *gin.Context) {
 	permissionsStr, _ := context.GetPostForm("permissions")
 	if permissionsStr != "" && len(permissionsStr) != 9 {
 		sendJsonMsg(context, http.StatusBadRequest, "Wrong permissions flags (must have 9 characters exactly)")
+		logs.ControllerLog.Error("Wrong permissions flags (must have 9 characters exactly)")
 		return
 	}
 	if err != nil {
 		sendJsonMsg(context, http.StatusBadRequest, err.Error())
+		logs.ControllerLog.Error(err.Error())
 		return
 	}
 
@@ -208,6 +222,7 @@ func (fileController FileControllerImpl) UploadFile(context *gin.Context) {
 	})
 	if err != nil {
 		sendJsonMsg(context, http.StatusInternalServerError, err.Error())
+		logs.ControllerLog.Error(err.Error())
 		return
 	}
 
@@ -215,11 +230,13 @@ func (fileController FileControllerImpl) UploadFile(context *gin.Context) {
 		gService, err := services.GetGdriveService()
 		if err != nil {
 			sendJsonMsg(context, http.StatusInternalServerError, err.Error())
+			logs.ControllerLog.Error(err.Error())
 			return
 		}
 		fileDrive, err := fileController.fileService.UploadFileGDrive(gService, strconv.FormatInt(fileModel.Id, 10), file)
 		if err != nil {
 			sendJsonMsg(context, http.StatusInternalServerError, "Unable to upload file to google drive: "+err.Error())
+			logs.ControllerLog.Error("Unable to upload file to google drive: "+err.Error())
 			return
 		}
 		err = fileController.fileService.SetGdriveId(fileModel.Id, fileDrive.Id)
@@ -229,6 +246,7 @@ func (fileController FileControllerImpl) UploadFile(context *gin.Context) {
 
 	if err != nil {
 		sendJsonMsg(context, http.StatusInternalServerError, err.Error())
+		logs.ControllerLog.Error(err.Error())
 		return
 	}
 
@@ -243,8 +261,10 @@ func (fileController FileControllerImpl) DeleteFile(context *gin.Context) {
 	if err != nil {
 		if err == sql.ErrNoRows {
 			sendJsonMsg(context, http.StatusNotFound, "Unable to find file: "+filename)
+			logs.ControllerLog.Error("Unable to find file: "+filename)
 		} else {
 			sendJsonMsg(context, http.StatusBadRequest, "Unable to delete file: "+err.Error())
+			logs.ControllerLog.Error("Unable to delete file: "+err.Error())
 		}
 		return
 	}

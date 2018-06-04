@@ -1,35 +1,38 @@
 package dao
 
 import (
-	"github.com/labstack/gommon/log"
-	"github.com/sirupsen/logrus"
+	"mantecabox/logs"
+
 )
 
 func UserDaoFactory(engine string) UserDao {
+	logs.DaoLog.Debug("UserDaoFactory")
 	var userDao UserDao
 	switch engine {
 	case "postgres":
 		userDao = UserPgDao{}
 	default:
-		logrus.Info(engine, "engine is not yet implemented")
+		logs.DaoLog.Info(engine, "engine is not yet implemented")
 		return nil
 	}
 	return userDao
 }
 
 func FileDaoFactory(engine string) FileDao {
+	logs.DaoLog.Debug("FileDaoFactory")
 	var fileDao FileDao
 	switch engine {
 	case "postgres":
 		fileDao = FilePgDao{}
 	default:
-		log.Info(engine, "engine is not yet implemented")
+		logs.DaoLog.Info(engine, "engine is not yet implemented")
 		return nil
 	}
 	return fileDao
 }
 
 func LoginAttemptFactory(engine string) LoginAttempDao {
+	logs.DaoLog.Debug("LoginAttemptFactory")
 	switch engine {
 	case "postgres":
 		return LoginAttemptPgDao{}

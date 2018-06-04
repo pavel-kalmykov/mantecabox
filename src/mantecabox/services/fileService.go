@@ -12,11 +12,11 @@ import (
 	"strconv"
 
 	"mantecabox/dao"
+	"mantecabox/logs"
 	"mantecabox/models"
 	"mantecabox/utilities"
 
 	"github.com/go-http-utils/headers"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/api/drive/v3"
 )
 
@@ -166,7 +166,7 @@ func (fileService FileServiceImpl) DeleteFile(filename string, user *models.User
 func (fileService FileServiceImpl) createDirIfNotExists() {
 	err := os.MkdirAll(fileService.configuration.FilesPath, 0700)
 	if err != nil {
-		logrus.Print("Error creating file's directory: " + err.Error())
+		logs.ServicesLog.Errorf("Error creating file's directory: %v", err.Error())
 		panic(err)
 	}
 }
