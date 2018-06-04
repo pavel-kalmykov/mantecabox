@@ -23,7 +23,7 @@ FROM files f
 WHERE f.deleted_at IS NULL AND u.deleted_at IS NULL AND f.name = $1 AND u.email = $2`
 	insertFileQuery = `INSERT INTO files (name, owner, gdrive_id) VALUES ($1, $2, $3) RETURNING *;`
 	updateFileQuery = `UPDATE files SET name = $1, owner = $2 WHERE id = $3 RETURNING *`
-	deleteFileQuery = "UPDATE files SET deleted_at = NOW() WHERE name = $1 AND owner = $2"
+	deleteFileQuery = "UPDATE files SET deleted_at = NOW() WHERE deleted_at is null and name = $1 AND owner = $2"
 )
 
 type FilePgDao struct {
