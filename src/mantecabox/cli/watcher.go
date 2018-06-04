@@ -32,6 +32,27 @@ func monitorChanges(w *watcher.Watcher) {
 					PermissionsStr: permbits.FileMode(fileInfo.Mode()).String(),
 				})
 			}
+
+			token, err := GetToken()
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return
+			}
+
+			ids, names, dates, permissions, err := getFilesList(token)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return
+			}
+			remoteFiles := make([]models.FileDTO, len(ids))
+			for i := 0; i < len(ids); i++ {
+				remoteFiles = append(remoteFiles, models.FileDTO{
+					TimeStamp:      models.TimeStamp{UpdatedAt: null.Time{Time: dates[i].Time(), Valid: true}},
+					Name:           names[i].Raw,
+					PermissionsStr: permissions[i].Raw,
+				})
+			}
+
 		case err := <-w.Error:
 			fmt.Fprintln(os.Stderr, err)
 		case <-w.Closed:
