@@ -116,6 +116,6 @@ func Login(credentialsFunc func() models.Credentials) error {
 		return err
 	}
 
-	fmt.Println(SuccesMessage("Successfully logged for %v", durafmt.ParseShort(result.Expire.Sub(time.Now())).String()))
+	fmt.Println(SuccesMessage("Successfully logged for %v", durafmt.ParseShort(result.Expire.Sub(time.Now()).Round(time.Minute)).String()))
 	return nil
 }
