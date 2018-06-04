@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"mantecabox/models"
@@ -45,8 +46,19 @@ func uploadFile(filePath string, token string) (string, error) {
 	return fileName.Str, nil
 }
 
-func downloadFile(selectedFile string, token string) error {
-	fileUrl := "/files/" + selectedFile
+func downloadFileVersion(selectedFile, token string) error {
+	version, err := getFileVersion(selectedFile, token)
+	if err != nil {
+		return err
+	}
+	return downloadFileWithUrl(selectedFile, "/files/"+selectedFile+"/versions/"+version, token)
+}
+
+func downloadFile(selectedFile, token string) error {
+	return downloadFileWithUrl(selectedFile, "/files/"+selectedFile, token)
+}
+
+func downloadFileWithUrl(selectedFile, fileUrl, token string) error {
 	var fileDto models.FileDTO
 	var serverError models.ServerError
 
@@ -81,6 +93,7 @@ func downloadFile(selectedFile string, token string) error {
 	setFilePermissions(selectedFile, fileDto.PermissionsStr)
 	return nil
 }
+
 func setFilePermissions(selectedFile string, permissionsStr string) error {
 	if len(permissionsStr) != 9 {
 		return errors.New("wrong permissions string (must contain 9 characters)")
@@ -138,7 +151,7 @@ func Transfer(transferActions []string) error {
 	if lengthActions > 0 {
 		switch transferActions[0] {
 		case "list":
-			names, dates, permissions, err := getFiles(token)
+			_, names, dates, permissions, err := getFilesList(token)
 			if err != nil {
 				fmt.Printf(err.Error())
 			}
@@ -170,13 +183,33 @@ func Transfer(transferActions []string) error {
 					}
 				}
 			} else {
-
 				fileSelected, err := getFileList(token)
 				if err != nil {
 					return err
 				}
-
 				err = downloadFile(fileSelected, token)
+				if err != nil {
+					return err
+				}
+				fmt.Println(SuccesMessage("File '%v' downloaded correctly.", fileSelected))
+			}
+			fmt.Println("Remember: all your files are located in your Mantecabox User's directory")
+		case "version":
+			if lengthActions > 1 {
+				for _, input := range transferActions[1:] {
+					err := downloadFileVersion(input, token)
+					if err != nil {
+						fmt.Printf(ErrorMessage("Error downloading file '%v'.\n", input))
+					} else {
+						fmt.Printf(SuccesMessage("File '%v' downloaded correctly.\n", input))
+					}
+				}
+			} else {
+				fileSelected, err := getFileList(token)
+				if err != nil {
+					return err
+				}
+				err = downloadFileVersion(fileSelected, token)
 				if err != nil {
 					return err
 				}
@@ -216,7 +249,7 @@ func Transfer(transferActions []string) error {
 }
 
 func getFileList(token string) (string, error) {
-	names, _, _, err := getFiles(token)
+	_, names, _, _, err := getFilesList(token)
 	if err != nil {
 		return "", err
 	}
@@ -240,25 +273,64 @@ func getFileList(token string) (string, error) {
 	return fileSelected, err
 }
 
-func getFiles(token string) ([]gjson.Result, []gjson.Result, []gjson.Result, error) {
+func getFileVersion(file, token string) (string, error) {
+	ids, _, dates, _, err := getFileVersionsList(file, token)
+	if err != nil {
+		return "", err
+	}
+
+	var list []string
+	for i, id := range ids {
+		list = append(list, fmt.Sprintf("v.%v (%v)", id.Raw, dates[i].Time().Format(time.RFC822)))
+	}
+	fileSelected := ""
+	prompt := &survey.Select{
+		Message: "Please, choose one version: ",
+		Options: list,
+	}
+
+	err = survey.AskOne(prompt, &fileSelected, nil)
+	if err != nil {
+		return "", err
+	}
+	fields := strings.Fields(fileSelected)
+	if len(fields) <= 1 {
+		return "", errors.New("unable to parse ID from selected option")
+	}
+	selectedVersion := fields[0][2:]
+	fmt.Printf("Selected version %v\n", selectedVersion)
+	return selectedVersion, err
+}
+
+func getFileVersionsList(file, token string) ([]gjson.Result, []gjson.Result, []gjson.Result, []gjson.Result, error) {
+	return getList("/files/"+file+"/versions", token)
+}
+
+func getFilesList(token string) ([]gjson.Result, []gjson.Result, []gjson.Result, []gjson.Result, error) {
+	return getList("/files", token)
+}
+
+func getList(url, token string) ([]gjson.Result, []gjson.Result, []gjson.Result, []gjson.Result, error) {
 	s := GetSpinner()
 	response, err := resty.R().
 		SetAuthToken(token).
-		Get("/files")
+		Get(url)
 	s.Stop()
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
+	responseStr := response.String()
 	if response.StatusCode() == http.StatusOK {
-		names := gjson.Get(response.String(), "#.name").Array()
-		dates := gjson.Get(response.String(), "#.updated_at").Array()
-		permissions := gjson.Get(response.String(), "#.permissions").Array()
+		ids := gjson.Get(responseStr, "#.id").Array()
+		names := gjson.Get(responseStr, "#.name").Array()
+		dates := gjson.Get(responseStr, "#.updated_at").Array()
+		permissions := gjson.Get(responseStr, "#.permissions").Array()
 		if !(len(names) > 0) {
-			return nil, nil, nil, errors.New("there are no files in our servers. Upload one")
+			return nil, nil, nil, nil, errors.New("there are no files in our servers. Upload one")
 		}
-		return names, dates, permissions, nil
+		return ids, names, dates, permissions, nil
 	} else {
-		return nil, nil, nil, errors.New(ErrorMessage("server did not sent HTTP 200 OK status. ") + response.String())
+		return nil, nil, nil, nil, errors.New(ErrorMessage("server did not sent HTTP 200 OK status. ") + responseStr)
 	}
 }
