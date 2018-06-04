@@ -1,6 +1,6 @@
 {
   "aes_key": "Mantecabox rocks!",
-  "token_timeout": "1h",
+  "token_timeout": "3h",
   "blocked_login_time_limit": "5m",
   "verification_mail_time_limit": "5m",
   "max_unsuccessful_attempts": 3,

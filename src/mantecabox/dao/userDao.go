@@ -63,7 +63,7 @@ func (dao UserPgDao) GetByPk(email string) (models.User, error) {
 		row := db.QueryRow(getUserByPkQuery, email)
 		err := scanUserRow(row, &user)
 		if err != nil {
-			daoLog.Debug("Unable to execute UserPgDao.GetByPk(email string) query. Reason:", err)
+			daoLog.Debug("Unable to execute UserPgDao.GetVersionsByNameAndOwner(email string) query. Reason:", err)
 		} else {
 			daoLog.Debug("Retrieved user", user)
 		}

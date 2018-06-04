@@ -20,7 +20,6 @@ type (
 		DownloadFile(context *gin.Context)
 		UploadFile(context *gin.Context)
 		DeleteFile(context *gin.Context)
-		checkSameFileExist(filename string, user models.User) (file models.File, err error)
 	}
 
 	FileControllerImpl struct {
@@ -55,7 +54,8 @@ func (fileController FileControllerImpl) GetFile(context *gin.Context) {
 
 	filename := context.Param("file")
 
-	file, err := fileController.checkSameFileExist(filename, getUser(context))
+	user := getUser(context)
+	file, err := fileController.fileService.GetLastVersionFileByNameAndOwner(filename, &user)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			sendJsonMsg(context, http.StatusNotFound, fmt.Sprintf(`Unable to find file "%v": %v`, filename, err))
@@ -72,7 +72,8 @@ func (fileController FileControllerImpl) DownloadFile(context *gin.Context) {
 
 	filename := context.Param("file")
 
-	file, err := fileController.checkSameFileExist(filename, getUser(context))
+	user := getUser(context)
+	file, err := fileController.fileService.GetLastVersionFileByNameAndOwner(filename, &user)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			sendJsonMsg(context, http.StatusNotFound, fmt.Sprintf(`Unable to find file "%v": %v`, filename, err))
@@ -107,28 +108,14 @@ func (fileController FileControllerImpl) UploadFile(context *gin.Context) {
 		return
 	}
 
-	fileModel, err := fileController.checkSameFileExist(header.Filename, getUser(context))
+	fileModel, err := fileController.fileService.CreateFile(&models.File{
+		Name:           header.Filename,
+		Owner:          getUser(context),
+		PermissionsStr: permissionsStr,
+	})
 	if err != nil {
-		if err != sql.ErrNoRows {
-			sendJsonMsg(context, http.StatusInternalServerError, "Unable to upload file: "+err.Error())
-			return
-		}
-		fileModel, err = fileController.fileService.CreateFile(&models.File{
-			Name:           header.Filename,
-			Owner:          getUser(context),
-			PermissionsStr: permissionsStr,
-		})
-		if err != nil {
-			sendJsonMsg(context, http.StatusInternalServerError, err.Error())
-			return
-		}
-	} else {
-		fileModel.PermissionsStr = permissionsStr
-		fileModel, err = fileController.fileService.UpdateFile(fileModel.Id, fileModel)
-		if err != nil {
-			sendJsonMsg(context, http.StatusInternalServerError, err.Error())
-			return
-		}
+		sendJsonMsg(context, http.StatusInternalServerError, err.Error())
+		return
 	}
 	err = fileController.fileService.SaveFile(file, fileModel)
 	if err != nil {
@@ -159,8 +146,4 @@ func getUser(context *gin.Context) models.User {
 	var user models.User
 	user.Email = jwt.ExtractClaims(context)["id"].(string)
 	return user
-}
-
-func (fileController FileControllerImpl) checkSameFileExist(filename string, user models.User) (file models.File, err error) {
-	return fileController.fileService.GetFile(filename, &user)
 }

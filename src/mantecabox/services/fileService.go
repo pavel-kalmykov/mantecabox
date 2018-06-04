@@ -20,11 +20,10 @@ import (
 type (
 	FileService interface {
 		GetAllFiles(user models.User) ([]models.File, error)
-		GetFile(filename string, user *models.User) (models.File, error)
+		GetLastVersionFileByNameAndOwner(filename string, user *models.User) (models.File, error)
 		GetFileStream(fileDecrypt []byte, file models.File) (contentLength int64, contentType string, reader *bytes.Reader, extraHeaders map[string]string)
 		GetDecryptedLocalFile(file models.File) ([]byte, error)
 		CreateFile(file *models.File) (models.File, error)
-		UpdateFile(id int64, file models.File) (models.File, error)
 		SaveFile(file multipart.File, uploadedFile models.File) error
 		DeleteFile(filename string, user *models.User) error
 		createDirIfNotExists()
@@ -58,11 +57,11 @@ func NewFileService(configuration *models.Configuration) FileService {
 }
 
 func (fileService FileServiceImpl) GetAllFiles(user models.User) ([]models.File, error) {
-	return fileService.fileDao.GetAll(&user)
+	return fileService.fileDao.GetAllByOwner(&user)
 }
 
-func (fileService FileServiceImpl) GetFile(filename string, user *models.User) (models.File, error) {
-	return fileService.fileDao.GetByPk(filename, user)
+func (fileService FileServiceImpl) GetLastVersionFileByNameAndOwner(filename string, user *models.User) (models.File, error) {
+	return fileService.fileDao.GetLastVersionFileByNameAndOwner(filename, user)
 }
 
 func (fileService FileServiceImpl) GetDecryptedLocalFile(file models.File) ([]byte, error) {
@@ -90,10 +89,6 @@ func (fileService FileServiceImpl) CreateFile(file *models.File) (models.File, e
 	return fileService.fileDao.Create(file)
 }
 
-func (fileService FileServiceImpl) UpdateFile(id int64, file models.File) (models.File, error) {
-	return fileService.fileDao.Update(id, &file)
-}
-
 func (fileService FileServiceImpl) SaveFile(file multipart.File, uploadedFile models.File) error {
 	// Conversión a bytes del fichero
 	buf := bytes.NewBuffer(nil)
@@ -109,7 +104,7 @@ func (fileService FileServiceImpl) SaveFile(file multipart.File, uploadedFile mo
 }
 
 func (fileService FileServiceImpl) DeleteFile(filename string, user *models.User) error {
-	file, err := fileService.fileDao.GetByPk(filename, user)
+	file, err := fileService.fileDao.GetLastVersionFileByNameAndOwner(filename, user)
 	if err != nil {
 		return err
 	}

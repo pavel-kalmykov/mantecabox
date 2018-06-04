@@ -18,15 +18,15 @@ func UserDaoFactory(engine string) UserDao {
 }
 
 func FileDaoFactory(engine string) FileDao {
-	var userDao FileDao
+	var fileDao FileDao
 	switch engine {
 	case "postgres":
-		userDao = FilePgDao{}
+		fileDao = FilePgDao{}
 	default:
 		log.Info(engine, "engine is not yet implemented")
 		return nil
 	}
-	return userDao
+	return fileDao
 }
 
 func LoginAttemptFactory(engine string) LoginAttempDao {
