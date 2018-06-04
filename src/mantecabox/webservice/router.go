@@ -4,6 +4,7 @@ import (
 	"mantecabox/models"
 
 	"github.com/gin-gonic/gin"
+	"github.com/zsais/go-gin-prometheus"
 )
 
 func Router(useJWT bool, configuration *models.Configuration) *gin.Engine {
@@ -17,6 +18,8 @@ func Router(useJWT bool, configuration *models.Configuration) *gin.Engine {
 	}
 
 	r := gin.Default()
+	p := ginprometheus.NewPrometheus("gin")
+	p.Use(r)
 
 	r.POST("/register", userController.RegisterUser)
 	r.POST("/2fa-verification", userController.Generate2FAAndSendMail)
