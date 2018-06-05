@@ -83,6 +83,7 @@ Estas son algunas de las carencias que encontramos en la aplicación desarrollad
 - Esquema de almacenamiento incremental: Nuestra forma de implementar el sistema de versiones ha sido el de crear un nuevo fichero por cada nueva versión subida. Hubiera sido interesante que cada nueva versión hubiese sido un simple _patch_ al fichero original, ya que esto nos habría ahorrado mucho almacenamiento innecesario haciendo que nuestra solución actual sea muy poco escalable.
 - Cifrado con conocimiento cero: Uno de nuestros objetivos iniciales fue el de querer que el sistema tuviese cifrado con conocimiento cero, ya que considerábamos que era una medida de seguridad muy avanzada. Eventualmente, debido a la falta de tiempo, esto no se ha llegado a implementar y optamos por una solución de cifrado y generación de claves por parte del servidor.
 - Cambio de contraseña del cliente y borrado de cuenta de usuario: Son dos funcionalidades de seguridad básicas que debimos haber implementado, pero que no hicimos por olvido y porqué quisimos centrarnos en otros aspectos del proyecto.
+- Añadir atributo tamaño de fichero y poder cambiar el host al que se conecta el cliente: Otros dos cambios que quisimos implementar pero que se nos olvidaron.
 - Mejor sistema de sincronización del cliente: Es una de las últimas funcionalidades implementadas, y actualmente lo único que hace es subir nuevos ficheros que detecte que no existan ya en el servidor. Sin embargo, esta solución dista mucho de lo que se espera de un cliente de sincronización automática.
 
 ## Despliegue y uso
