@@ -85,6 +85,35 @@ Estas son algunas de las carencias que encontramos en la aplicación desarrollad
 - Cambio de contraseña del cliente y borrado de cuenta de usuario: Son dos funcionalidades de seguridad básicas que debimos haber implementado, pero que no hicimos por olvido y porqué quisimos centrarnos en otros aspectos del proyecto.
 - Mejor sistema de sincronización del cliente: Es una de las últimas funcionalidades implementadas, y actualmente lo único que hace es subir nuevos ficheros que detecte que no existan ya en el servidor. Sin embargo, esta solución dista mucho de lo que se espera de un cliente de sincronización automática.
 
+## Despliegue y uso
+Una vez descargado el proyecto, descargamos también todas sus dependencias
+```bash
+$ go get ./...
+```
+
+Y ejecutamos el script para inicializar la base de datos:
+```bash
+$ ./init-docker-postgres-db.sh
+```
+
+Arrancamos el servidor ejecutando el fichero `server.go`:
+```bash
+$ go run src/mantecabox/server.go
+```
+
+Y ejecutamos el cliente con algunas de las opciones:
+```bash
+$ go run src/mantecabox/cli.go signup
+$ go run src/mantecabox/cli.go login
+$ go run src/mantecabox/cli.go transfer list
+$ go run src/mantecabox/cli.go transfer upload [files...]
+$ go run src/mantecabox/cli.go transfer download [files...]
+$ go run src/mantecabox/cli.go transfer remove [files...]
+$ go run src/mantecabox/cli.go transfer version [files...]
+$ go run src/mantecabox/cli.go transfer daemon
+```
+siendo "[files...]" los argumentos de entrada (opcionales).
+
 ## Conclusiones
 La temática de la práctica así como de la asignatura nos ha parecido interesante, y la aplicación a desarrollar nos ha supuesto un reto bastante desafiante, ya que la mayoría de los conceptos técnicos que se han aplicado aquí no los conocíamos. Sin embargo, gracias a la metodología aplicada, hemos conseguido de forma satisfactoria implementar la mayoría de funcionaliades que se propusieron. Sin embargo, hubiéramos esperado adquirir otros muchos conocimientos del ámbito de la seguridad informática. Por ejemplo, por muy segura que sea nuestro diseño, no hemos aprendido (ni nos han enseñado) ninguna estrategia ni forma de actuar en caso de que nuestra aplicación recibiese un hipotético ataque de ningún tipo, cosa que creemos crucial para este tipo de asignatura.
 
